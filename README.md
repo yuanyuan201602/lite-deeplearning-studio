@@ -50,6 +50,7 @@ http://127.0.0.1:8000
 - [智能博物轻量版学生培训文档](docs/TRAINING_SMART_MUSEUM.md)
 - [优创未来轻量版学生培训文档](docs/TRAINING_FUTURE_CREATOR.md)
 - [培训文档索引](docs/TRAINING_INDEX.md)
+- [行空板 M10 + DFRobot 外设硬件选择清单](docs/HARDWARE_CHECKLIST.md)
 
 ## 常用命令
 

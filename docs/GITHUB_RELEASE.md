@@ -117,6 +117,7 @@ Release 说明示例：
 - `docs/TRAINING_SMART_MUSEUM.md`
 - `docs/TRAINING_FUTURE_CREATOR.md`
 - `docs/TRAINING_INDEX.md`
+- `docs/HARDWARE_CHECKLIST.md`
 ```
 
 ## 5. 学生交付建议

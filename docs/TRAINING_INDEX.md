@@ -49,6 +49,10 @@ FutureCreator-Windows-Setup.zip
 - 行空板 M10
 - DFRobot 开源硬件外设
 
+硬件选择清单：
+
+[行空板 M10 + DFRobot 外设硬件选择清单](HARDWARE_CHECKLIST.md)
+
 ## 学生安装入口
 
 Windows 学生机解压对应 zip 后：

@@ -18,6 +18,7 @@ def test_repository_delivery_docs_exist_with_install_paths() -> None:
         "docs/TRAINING_INDEX.md",
         "docs/TRAINING_SMART_MUSEUM.md",
         "docs/TRAINING_FUTURE_CREATOR.md",
+        "docs/HARDWARE_CHECKLIST.md",
     ]
 
     for doc_path in required_docs:
@@ -43,6 +44,8 @@ def test_repository_delivery_docs_exist_with_install_paths() -> None:
         "FutureCreator-Windows-Setup.zip",
         "一键安装.bat",
         "启动软件.bat",
+        "HuskyLens",
+        "语音合成模块",
     ]:
         assert keyword in combined_docs
 
@@ -50,6 +53,7 @@ def test_repository_delivery_docs_exist_with_install_paths() -> None:
 def test_training_docs_cover_install_and_competition_tasks() -> None:
     smart_museum = read_text("docs/TRAINING_SMART_MUSEUM.md")
     future_creator = read_text("docs/TRAINING_FUTURE_CREATOR.md")
+    hardware = read_text("docs/HARDWARE_CHECKLIST.md")
 
     for keyword in [
         "SmartMuseum-Windows-Setup.zip",
@@ -72,6 +76,18 @@ def test_training_docs_cover_install_and_competition_tasks() -> None:
         "DFRobot",
     ]:
         assert keyword in future_creator
+
+    for keyword in [
+        "行空板 M10",
+        "DFRobot",
+        "SmartMuseum-Windows-Setup.zip",
+        "FutureCreator-Windows-Setup.zip",
+        "语音合成模块",
+        "HuskyLens",
+        "传感器",
+        "执行器",
+    ]:
+        assert keyword in hardware
 
 
 def test_delivery_scripts_exist_and_are_import_safe() -> None:
