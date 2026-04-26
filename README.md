@@ -58,7 +58,7 @@ python packaging/build_student_installer.py
 
 默认输出到 `dist/lite-deeplearning-studio-student-installer.zip`。
 
-Windows 学生解压后双击 `setup.bat` 安装，再双击 `start.bat` 启动。
+Windows 学生解压后双击 `一键安装.bat` 安装，再双击 `启动软件.bat` 启动。安装后也会尝试创建桌面快捷方式。
 
 面向 Windows 分发时，也可以生成更直观的文件名：
 

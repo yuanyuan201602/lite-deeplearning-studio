@@ -123,10 +123,12 @@ python packaging/build_student_installer.py --output dist/LiteDeepLearningStudio
 
 Windows 学生机推荐使用类似 setup 的双击安装入口：
 
-- 基础安装：双击 `setup.bat`
-- OCR 增强安装：双击 `setup_ocr.bat`
-- 启动：双击 `start.bat`，或使用安装后生成的桌面快捷方式
-- 卸载本地运行环境：双击 `uninstall.bat`
+- 基础安装：双击 `一键安装.bat`
+- OCR 增强安装：双击 `安装OCR增强.bat`
+- 启动：双击 `启动软件.bat`，或使用安装后生成的桌面快捷方式
+- 卸载本地运行环境：双击 `卸载本地环境.bat`
+
+包内也保留英文入口：`setup.bat`、`setup_ocr.bat`、`start.bat`、`uninstall.bat`，方便部分 Windows 环境处理中文文件名异常时使用。
 
 其他系统按系统运行：
 

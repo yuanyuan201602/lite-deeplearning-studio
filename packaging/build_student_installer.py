@@ -204,8 +204,8 @@ WINDOWS_INSTALL_README = """# Windows 学生机安装说明
 ## 推荐方式
 
 1. 解压整个安装包。
-2. 双击 `setup.bat`。
-3. 安装完成后双击 `start.bat`，或使用桌面快捷方式。
+2. 双击 `一键安装.bat`。
+3. 安装完成后双击 `启动软件.bat`，或使用桌面快捷方式。
 4. 浏览器打开 `http://127.0.0.1:8000`。
 
 ## OCR 增强安装
@@ -213,14 +213,14 @@ WINDOWS_INSTALL_README = """# Windows 学生机安装说明
 如果要使用智能博物错别字 OCR 任务，双击：
 
 ```text
-setup_ocr.bat
+安装OCR增强.bat
 ```
 
 OCR 会下载 EasyOCR、Torch 和 OpenCV，速度较慢。普通图像识别、文本分类、问答和传感器任务只需要 `setup.bat`。
 
 ## 卸载
 
-双击 `uninstall.bat` 会删除本地运行环境 `.venv` 和学生生成的 `workspace`。
+双击 `卸载本地环境.bat` 会删除本地运行环境 `.venv` 和学生生成的 `workspace`。
 
 如果需要彻底删除，直接删除整个文件夹。
 """
@@ -233,15 +233,15 @@ README = """# Lite DeepLearning Studio 学生机安装包
 基础安装：
 
 ```text
-双击 setup.bat
-双击 start.bat
+双击 一键安装.bat
+双击 启动软件.bat
 ```
 
 OCR 增强安装：
 
 ```text
-双击 setup_ocr.bat
-双击 start.bat
+双击 安装OCR增强.bat
+双击 启动软件.bat
 ```
 
 ## macOS / Linux
@@ -295,6 +295,10 @@ GENERATED_FILES = {
     "setup_ocr.bat": SETUP_OCR_BAT,
     "start.bat": START_BAT,
     "uninstall.bat": UNINSTALL_BAT,
+    "一键安装.bat": SETUP_BAT,
+    "安装OCR增强.bat": SETUP_OCR_BAT,
+    "启动软件.bat": START_BAT,
+    "卸载本地环境.bat": UNINSTALL_BAT,
     "create_desktop_shortcut.ps1": CREATE_SHORTCUT_PS1,
     "install_macos_linux.sh": INSTALL_SH,
     "start_macos_linux.sh": START_SH,

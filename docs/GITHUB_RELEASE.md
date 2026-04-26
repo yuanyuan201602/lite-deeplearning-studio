@@ -101,7 +101,7 @@ Release 说明示例：
 
 ## 附件
 
-下载 `LiteDeepLearningStudio-Windows-Setup.zip`，解压后双击 `setup.bat`。
+下载 `LiteDeepLearningStudio-Windows-Setup.zip`，解压后双击 `一键安装.bat`。
 ```
 
 ## 5. 学生交付建议
@@ -111,7 +111,7 @@ Release 说明示例：
 ```text
 1. 下载 Release 附件 `LiteDeepLearningStudio-Windows-Setup.zip`。
 2. 解压并进入目录。
-3. Windows 双击 `setup.bat`；需要 OCR 时双击 `setup_ocr.bat`。
-4. 双击 `start.bat`，或使用桌面快捷方式。
+3. Windows 双击 `一键安装.bat`；需要 OCR 时双击 `安装OCR增强.bat`。
+4. 双击 `启动软件.bat`，或使用桌面快捷方式。
 5. 打开 http://127.0.0.1:8000。
 ```
