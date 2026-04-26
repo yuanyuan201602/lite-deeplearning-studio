@@ -6,7 +6,15 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-HardwareTarget = Literal["student_laptop", "jetson_nano", "raspberry_pi", "esp32", "generic"]
+HardwareTarget = Literal[
+    "student_laptop",
+    "unihiker_m10",
+    "jetson_nano",
+    "raspberry_pi",
+    "esp32",
+    "generic",
+]
+AppEdition = Literal["all", "smart_museum", "future_creator"]
 AiCapability = Literal[
     "text_classifier",
     "ocr_typo_checker",
@@ -54,7 +62,7 @@ class GenerationRequest(BaseModel):
     task_slug: str
     project_name: str = Field(min_length=1, max_length=80)
     student_name: str = Field(default="", max_length=80)
-    target_hardware: HardwareTarget = "student_laptop"
+    target_hardware: HardwareTarget = "unihiker_m10"
     dataset_notes: str = Field(default="", max_length=1000)
     class_labels: list[str] = Field(default_factory=list)
     text_csv: str = Field(default="", max_length=12000)

@@ -53,5 +53,22 @@ def test_voice_profiles_match_competition_hardware_plan() -> None:
         "unihiker_keyword_voice"
     )
     assert get_task("future_creator", "senior_llm_vision_motion").voice_profile == (
-        "jetson_voice_agent_stub"
+        "unihiker_keyword_voice"
     )
+
+
+def test_competitions_can_be_filtered_into_independent_editions() -> None:
+    assert [competition.slug for competition in list_competitions("smart_museum")] == [
+        "smart_museum"
+    ]
+    assert [competition.slug for competition in list_competitions("future_creator")] == [
+        "future_creator"
+    ]
+    assert get_competition("future_creator", "smart_museum") is None
+    assert get_task("future_creator", "image_recognition_starter", "smart_museum") is None
+
+
+def test_every_task_targets_unihiker_m10_dfrobot_hardware() -> None:
+    for competition in list_competitions():
+        for task in competition.tasks:
+            assert task.suggested_hardware == ["unihiker_m10"]

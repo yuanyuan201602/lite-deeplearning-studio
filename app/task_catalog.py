@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models import CompetitionDefinition, TaskDefinition
+from app.models import AppEdition, CompetitionDefinition, TaskDefinition
 
 STANDARD_OUTPUTS = [
     "README.md",
@@ -41,7 +41,7 @@ SMART_MUSEUM_TASKS = [
         runtime_requirements=["scikit-learn", "joblib", "numpy"],
         voice_profile="dfrobot_tts_broadcast",
         paused_features=[],
-        suggested_hardware=["student_laptop", "raspberry_pi"],
+        suggested_hardware=["unihiker_m10"],
         required_outputs=STANDARD_OUTPUTS,
         starter_steps=[
             "填写类别名称",
@@ -69,7 +69,7 @@ SMART_MUSEUM_TASKS = [
         runtime_requirements=["scikit-learn", "joblib", "numpy"],
         voice_profile="dfrobot_tts_broadcast",
         paused_features=["语音识别"],
-        suggested_hardware=["student_laptop", "raspberry_pi"],
+        suggested_hardware=["unihiker_m10"],
         required_outputs=STANDARD_OUTPUTS,
         starter_steps=[
             "选择非遗宣传场景",
@@ -98,7 +98,7 @@ SMART_MUSEUM_TASKS = [
         runtime_requirements=["scikit-learn", "joblib", "numpy", "pillow"],
         voice_profile="dfrobot_tts_broadcast",
         paused_features=["摄像头实时拍照"],
-        suggested_hardware=["student_laptop", "raspberry_pi", "jetson_nano"],
+        suggested_hardware=["unihiker_m10"],
         required_outputs=STANDARD_OUTPUTS,
         starter_steps=[
             "录入5张人脸卡片信息",
@@ -127,7 +127,7 @@ SMART_MUSEUM_TASKS = [
         runtime_requirements=["easyocr", "torch", "opencv-python-headless"],
         voice_profile="dfrobot_tts_broadcast",
         paused_features=[],
-        suggested_hardware=["student_laptop", "raspberry_pi", "jetson_nano"],
+        suggested_hardware=["unihiker_m10"],
         required_outputs=STANDARD_OUTPUTS,
         starter_steps=[
             "填写正确知识卡片文本",
@@ -157,7 +157,7 @@ SMART_MUSEUM_TASKS = [
         runtime_requirements=["scikit-learn", "joblib", "numpy"],
         voice_profile="dfrobot_tts_broadcast",
         paused_features=[],
-        suggested_hardware=["student_laptop", "raspberry_pi", "jetson_nano"],
+        suggested_hardware=["unihiker_m10"],
         required_outputs=STANDARD_OUTPUTS,
         starter_steps=[
             "填写类别和非遗名称",
@@ -188,7 +188,7 @@ FUTURE_CREATOR_TASKS = [
         runtime_requirements=["scikit-learn", "joblib", "numpy", "pillow"],
         voice_profile="none",
         paused_features=[],
-        suggested_hardware=["student_laptop", "raspberry_pi", "jetson_nano"],
+        suggested_hardware=["unihiker_m10"],
         required_outputs=STANDARD_OUTPUTS,
         starter_steps=[
             "填写识别类别",
@@ -202,7 +202,7 @@ FUTURE_CREATOR_TASKS = [
         slug="sensor_decision_template",
         title="传感器决策程序模板",
         summary="生成一个读取输入、判断状态、输出动作的硬件控制程序骨架。",
-        student_goal="生成适合接入行空板、树莓派或 ESP32 的决策逻辑示例。",
+        student_goal="生成适合接入行空板 M10 与 DFRobot 传感器/执行器外设的决策逻辑示例。",
         group="创意应用",
         requirement_source="附件4 优创未来 具身智能与智慧医疗",
         competition_requirements=[
@@ -216,7 +216,7 @@ FUTURE_CREATOR_TASKS = [
         runtime_requirements=["scikit-learn", "joblib", "numpy", "pandas"],
         voice_profile="none",
         paused_features=["真实传感器连接", "真实执行器控制"],
-        suggested_hardware=["raspberry_pi", "esp32", "generic"],
+        suggested_hardware=["unihiker_m10"],
         required_outputs=STANDARD_OUTPUTS,
         starter_steps=[
             "选择医疗应用场景",
@@ -244,7 +244,7 @@ FUTURE_CREATOR_TASKS = [
         runtime_requirements=["scikit-learn", "joblib", "numpy", "pillow"],
         voice_profile="unihiker_keyword_voice",
         paused_features=[],
-        suggested_hardware=["student_laptop", "raspberry_pi", "esp32"],
+        suggested_hardware=["unihiker_m10"],
         required_outputs=STANDARD_OUTPUTS,
         starter_steps=[
             "填写现场关键词",
@@ -272,7 +272,7 @@ FUTURE_CREATOR_TASKS = [
         runtime_requirements=["scikit-learn", "joblib", "numpy", "pillow"],
         voice_profile="unihiker_keyword_voice",
         paused_features=[],
-        suggested_hardware=["student_laptop", "raspberry_pi", "jetson_nano"],
+        suggested_hardware=["unihiker_m10"],
         required_outputs=STANDARD_OUTPUTS,
         starter_steps=[
             "填写现场关键词",
@@ -285,7 +285,7 @@ FUTURE_CREATOR_TASKS = [
     TaskDefinition(
         slug="senior_llm_vision_motion",
         title="高中组：大模型语音互动、视觉识别与运动控制",
-        summary="为高中组大模型角色、视觉识别和夹取摆放动作生成方案骨架。",
+        summary="为行空板 M10 + DFRobot 外设路线生成高中组视觉识别、语音接口和运动控制方案骨架。",
         student_goal="生成高中组完整技术链路的程序模板和验收清单。",
         group="高中组（含中职）",
         requirement_source="附件4 优创未来 高中组规定技术要求",
@@ -298,9 +298,9 @@ FUTURE_CREATOR_TASKS = [
         ai_capability="image_classifier",
         sample_dataset_kind="image",
         runtime_requirements=["scikit-learn", "joblib", "numpy", "pillow"],
-        voice_profile="jetson_voice_agent_stub",
-        paused_features=["真实大模型智能体", "真实机械装置控制"],
-        suggested_hardware=["student_laptop", "jetson_nano", "raspberry_pi"],
+        voice_profile="unihiker_keyword_voice",
+        paused_features=["真实大模型智能体", "真实机械装置控制", "行空板M10本地大模型需外接服务或后续扩展"],
+        suggested_hardware=["unihiker_m10"],
         required_outputs=STANDARD_OUTPUTS,
         starter_steps=[
             "设定医疗场景智能体角色",
@@ -328,16 +328,32 @@ COMPETITIONS = [
 ]
 
 
-def list_competitions() -> list[CompetitionDefinition]:
-    return COMPETITIONS
+def normalize_edition(edition: AppEdition | str | None = "all") -> AppEdition:
+    if edition in ("smart_museum", "future_creator"):
+        return edition
+    return "all"
 
 
-def get_competition(slug: str) -> CompetitionDefinition | None:
-    return next((competition for competition in COMPETITIONS if competition.slug == slug), None)
+def list_competitions(edition: AppEdition | str | None = "all") -> list[CompetitionDefinition]:
+    normalized = normalize_edition(edition)
+    if normalized == "all":
+        return COMPETITIONS
+    return [competition for competition in COMPETITIONS if competition.slug == normalized]
 
 
-def get_task(competition_slug: str, task_slug: str) -> TaskDefinition | None:
-    competition = get_competition(competition_slug)
+def get_competition(
+    slug: str,
+    edition: AppEdition | str | None = "all",
+) -> CompetitionDefinition | None:
+    return next((competition for competition in list_competitions(edition) if competition.slug == slug), None)
+
+
+def get_task(
+    competition_slug: str,
+    task_slug: str,
+    edition: AppEdition | str | None = "all",
+) -> TaskDefinition | None:
+    competition = get_competition(competition_slug, edition)
     if competition is None:
         return None
     return next((task for task in competition.tasks if task.slug == task_slug), None)

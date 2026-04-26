@@ -39,7 +39,7 @@ def test_generated_checklist_mentions_pdf_submission_requirements(tmp_path) -> N
         task_slug="senior_llm_vision_motion",
         project_name="高中组验证",
         student_name="学生D",
-        target_hardware="jetson_nano",
+        target_hardware="unihiker_m10",
         dataset_notes="现场卡片和夹取任务。",
         class_labels=["人脸", "二维码"],
     )
@@ -69,3 +69,4 @@ def test_acceptance_script_documents_web_check_option() -> None:
     )
 
     assert "--with-web" in result.stdout
+    assert "--edition" in result.stdout

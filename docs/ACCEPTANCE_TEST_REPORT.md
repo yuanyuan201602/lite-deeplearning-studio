@@ -9,6 +9,13 @@
 
 本次测试不只检查页面是否能打开，也检查平台是否能围绕竞赛任务生成可本地训练/推理的 AI 任务包。
 
+最新交付形态已经拆分为两个独立轻量版：
+
+- 智能博物轻量版：`SmartMuseum-Windows-Setup.zip`
+- 优创未来轻量版：`FutureCreator-Windows-Setup.zip`
+
+两版统一硬件基线：行空板 M10 + DFRobot 开源硬件外设。
+
 ## 测试范围
 
 ### 智能博物
@@ -60,7 +67,7 @@ python -m pytest -q
 
 最终复跑：
 
-- 30 passed
+- 35 passed
 
 ### 竞赛验收脚本
 
@@ -114,7 +121,7 @@ python -m ruff check app tests scripts
 
 通过 `scripts/acceptance_check.py --with-web` 的本地 TestClient 进行 HTTP 验收：
 
-- 10 个任务页面全部返回 200。
+- 10 个任务页面全部返回 200；两个独立版本分别只显示本比赛任务。
 - 10 个任务全部可以通过表单生成任务包。
 - 每个生成结果页都包含“下载任务包”入口。
 - 每个下载入口都返回 zip 文件。
@@ -137,7 +144,7 @@ python -m ruff check app tests scripts
 - 为 OCR/错字检查生成 EasyOCR 验证包，并在当前 OCR 增强环境中通过真实识别验收；缺少 OCR 增强依赖时仍会明确报告环境缺失。
 - 智能博物任务包生成 DFRobot TTS 播报模板。
 - 优创未来小学/初中任务包生成行空板关键词语音模板。
-- 优创未来高中任务包生成 Jetson 语音智能体接口模板。
+- 优创未来高中任务包生成行空板 M10 语音接口模板。
 - 已补充 GitHub 仓库化交付说明和学生机安装说明；远程仓库发布、release 和安装包实机验证仍属于最终交付动作。
 
 ## 仍未完成的真实能力
@@ -146,7 +153,7 @@ python -m ruff check app tests scripts
 
 - 行空板真实麦克风语音识别联调。
 - DFRobot TTS 真实串口模块联调。
-- Jetson 真实外接麦克风、ASR/TTS 和大模型智能体接入。
+- 行空板 M10 真实麦克风、DFRobot TTS 和大模型服务接入。
 - 机械臂或机械装置控制。
 - 摄像头、麦克风、串口等真实硬件连接。
 - 使用真实现场数据完成最终比赛模型训练。
@@ -163,6 +170,6 @@ python -m ruff check app tests scripts
 
 1. 接入学生真实图片和文本数据上传。
 2. 加入摄像头拍照和图片采集流程。
-3. 在真实行空板和 Jetson 上做语音硬件联调。
+3. 在真实行空板 M10 和 DFRobot 外设上做语音硬件联调。
 4. 高中组大模型与机械控制单独排期。
 5. 完成 GitHub release、学生机安装包和干净机器安装验收。

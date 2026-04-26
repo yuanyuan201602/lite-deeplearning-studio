@@ -32,6 +32,10 @@ def test_repository_delivery_docs_exist_with_install_paths() -> None:
         "python packaging/build_student_installer.py",
         "lite-deeplearning-studio-student-installer.zip",
         "LiteDeepLearningStudio-Windows-Setup.zip",
+        "SmartMuseum-Windows-Setup.zip",
+        "FutureCreator-Windows-Setup.zip",
+        "行空板 M10",
+        "DFRobot",
     ]:
         assert keyword in combined_docs
 
@@ -53,6 +57,8 @@ def test_student_installer_script_includes_platform_installers() -> None:
     for keyword in [
         "install_macos_linux.sh",
         "start_macos_linux.sh",
+        "__EDITION__",
+        "__APP_TITLE__",
         "setup.bat",
         "setup_ocr.bat",
         "start.bat",

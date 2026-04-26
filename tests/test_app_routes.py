@@ -17,6 +17,30 @@ def test_homepage_shows_competitions(tmp_path: Path) -> None:
     assert "优创未来" in response.text
 
 
+def test_smart_museum_edition_only_shows_smart_museum(tmp_path: Path) -> None:
+    client = TestClient(create_app(workspace_root=tmp_path, edition="smart_museum"))
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "智能博物轻量版" in response.text
+    assert "智能博物" in response.text
+    assert "优创未来" not in response.text
+    assert client.get("/workflow/future_creator/image_recognition_starter").status_code == 404
+
+
+def test_future_creator_edition_only_shows_future_creator(tmp_path: Path) -> None:
+    client = TestClient(create_app(workspace_root=tmp_path, edition="future_creator"))
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "优创未来轻量版" in response.text
+    assert "优创未来" in response.text
+    assert "智能博物" not in response.text
+    assert client.get("/workflow/smart_museum/heritage_text_classifier").status_code == 404
+
+
 def test_workflow_page_shows_task_form(tmp_path: Path) -> None:
     client = TestClient(create_app(workspace_root=tmp_path))
 
@@ -37,7 +61,7 @@ def test_generate_creates_export_package(tmp_path: Path) -> None:
             "task_slug": "image_recognition_starter",
             "project_name": "图像识别演示",
             "student_name": "学生B",
-            "target_hardware": "raspberry_pi",
+            "target_hardware": "unihiker_m10",
             "dataset_notes": "三类校园图片。",
             "class_labels": "教室,操场,图书馆",
         },
@@ -59,7 +83,7 @@ def test_generate_accepts_sensor_csv_and_marks_user_data(tmp_path: Path) -> None
             "task_slug": "sensor_decision_template",
             "project_name": "传感器真实数据",
             "student_name": "学生B",
-            "target_hardware": "raspberry_pi",
+            "target_hardware": "unihiker_m10",
             "dataset_notes": "现场采集的医疗提醒数据。",
             "sensor_csv": (
                 "temperature,distance,signal,action\n"

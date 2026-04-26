@@ -385,6 +385,10 @@ def _image_features(path: Path) -> list[float]:
 
     def _render_hardware_notes(self, request: GenerationRequest) -> str:
         notes = {
+            "unihiker_m10": (
+                "统一硬件路线：行空板 M10 负责本地运行、屏幕显示、摄像头/麦克风接入；"
+                "DFRobot 开源硬件外设负责语音合成、传感器输入或执行器输出。"
+            ),
             "student_laptop": "在学生笔记本上运行 `python run.py`，确认输出后再整理到作品材料中。",
             "jetson_nano": "建议先在笔记本生成并测试脚本，再复制到 Jetson Nano 的项目目录运行。",
             "raspberry_pi": "建议通过 Thonny、VS Code Remote 或命令行复制脚本到树莓派运行。",
@@ -396,6 +400,14 @@ def _image_features(path: Path) -> list[float]:
 目标硬件：{request.target_hardware}
 
 {notes[request.target_hardware]}
+
+## 行空板 M10 + DFRobot 外设基线
+
+- 先在电脑端用样例数据跑通 `python run.py`。
+- 迁移到行空板 M10 时，保留 `data_sample/`、`models/` 和 `ai_runtime/`。
+- 智能博物优先接 DFRobot 语音合成模块完成播报。
+- 优创未来优先接 DFRobot 摄像头、传感器、舵机或执行器模块完成外设交互。
+- 串口、I2C、引脚编号和模块供电要按实物连接重新确认。
 
 ## 建议
 

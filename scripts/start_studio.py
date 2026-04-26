@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 
 import uvicorn
 
@@ -14,11 +15,18 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Reload on code changes. Useful for development installs.",
     )
+    parser.add_argument(
+        "--edition",
+        choices=["all", "smart_museum", "future_creator"],
+        default=os.environ.get("LDS_EDITION", "all"),
+        help="App edition to show: all, smart_museum, or future_creator.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    os.environ["LDS_EDITION"] = args.edition
     uvicorn.run(
         "app.main:app",
         host=args.host,

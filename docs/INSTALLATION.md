@@ -2,6 +2,13 @@
 
 本文面向学生自带电脑、机房电脑和教师演示电脑。推荐使用 Python 3.11 或 3.12，并优先在虚拟环境中安装。
 
+当前交付拆成两个独立轻量版：
+
+- 智能博物轻量版：只显示智能博物任务。
+- 优创未来轻量版：只显示优创未来任务。
+
+两版统一硬件基线：行空板 M10 + DFRobot 开源硬件外设。
+
 ## 1. 准备 Python
 
 确认 Python 可用：
@@ -119,6 +126,13 @@ Windows 学生机也可以生成更像 setup 分发包的文件名：
 
 ```bash
 python packaging/build_student_installer.py --output dist/LiteDeepLearningStudio-Windows-Setup.zip
+```
+
+生成两个独立比赛版本：
+
+```bash
+python packaging/build_student_installer.py --edition smart_museum --output dist/SmartMuseum-Windows-Setup.zip
+python packaging/build_student_installer.py --edition future_creator --output dist/FutureCreator-Windows-Setup.zip
 ```
 
 Windows 学生机推荐使用类似 setup 的双击安装入口：

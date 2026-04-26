@@ -2,6 +2,13 @@
 
 本文用于维护者把项目整理成 GitHub 仓库，并向学生发布可下载版本。
 
+当前客户交付要求拆成两个独立轻量版：
+
+- 智能博物轻量版：`SmartMuseum-Windows-Setup.zip`
+- 优创未来轻量版：`FutureCreator-Windows-Setup.zip`
+
+两版统一硬件基线：行空板 M10 + DFRobot 开源硬件外设。
+
 ## 1. 仓库建议
 
 推荐提交以下内容：
@@ -72,6 +79,8 @@ dist/lite-deeplearning-studio-student-installer.zip
 
 ```bash
 python packaging/build_student_installer.py --output dist/LiteDeepLearningStudio-Windows-Setup.zip
+python packaging/build_student_installer.py --edition smart_museum --output dist/SmartMuseum-Windows-Setup.zip
+python packaging/build_student_installer.py --edition future_creator --output dist/FutureCreator-Windows-Setup.zip
 ```
 
 这些脚本是轻量打包脚本，不引入 PyInstaller、Electron 或其他重型打包器。`source.zip` 面向开发者和教师，`student-installer.zip` / `Windows-Setup.zip` 面向学生机，内含 Windows 类 setup 入口、Windows/macOS/Linux 安装和启动脚本。

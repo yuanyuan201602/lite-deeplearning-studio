@@ -17,6 +17,13 @@ Lite DeepLearning Studio 是面向中小学生 AI 竞赛的轻量工作流平台
 
 当前版本实现的是 Quick Workflow Mode。
 
+按照最新客户要求，交付形态已经拆成两个独立轻量版：
+
+- 智能博物轻量版：只显示智能博物任务，可打包为 `SmartMuseum-Windows-Setup.zip`。
+- 优创未来轻量版：只显示优创未来任务，可打包为 `FutureCreator-Windows-Setup.zip`。
+
+两版统一硬件基线：行空板 M10 + DFRobot 开源硬件外设。
+
 学生可以：
 
 1. 打开首页。
@@ -72,7 +79,7 @@ Lite DeepLearning Studio 是面向中小学生 AI 竞赛的轻量工作流平台
 |---|---|---|
 | 小学组：语音互动与单类图像识别 | 关键词语音互动 1 条，4 类卡片中自选 1 类识别 | 图像识别已做本地训练/推理；语音生成行空板关键词识别模板 |
 | 初中组：视觉模型训练与调用 | 关键词语音互动，4 类卡片中自选 2 类识别，视觉模型训练与调用 | 图像模型训练/调用已做本地样例闭环；语音生成行空板关键词识别模板 |
-| 高中组：大模型语音互动、视觉识别与运动控制 | 大模型角色语音互动、2 类卡片识别、机械装置夹取 3 个立方体 | 视觉识别已做本地训练/推理；生成 Jetson 外接麦克风语音智能体接口，大模型和机械闭环后续接入 |
+| 高中组：大模型语音互动、视觉识别与运动控制 | 大模型角色语音互动、2 类卡片识别、机械装置夹取 3 个立方体 | 视觉识别已做本地训练/推理；生成行空板 M10 语音接口与 DFRobot 外设扩展接口，大模型和机械闭环后续接入 |
 | 图像识别快速模板 | 小学/初中/高中图像识别规定技术要求 | 生成本地图像分类训练/推理包 |
 | 传感器决策程序模板 | 智慧医疗创意应用、认知推理决策、硬件搭建 | 生成本地决策树训练/推理包和硬件接口说明 |
 
@@ -86,7 +93,7 @@ Lite DeepLearning Studio 是面向中小学生 AI 竞赛的轻量工作流平台
 - 真实图片、语音、文本数据采集。
 - 现场真实数据采集后的模型再训练。
 - 真实硬件连接、结构搭建、传感器调试。
-- 行空板真实麦克风语音识别联调、Jetson 真实外接麦克风联调和大模型智能体。
+- 行空板 M10 真实麦克风语音识别联调和大模型服务。
 - 演示视频、实物照片、创作说明的最终整理。
 - 现场展示和专家问答准备。
 
@@ -102,7 +109,7 @@ Lite DeepLearning Studio 是面向中小学生 AI 竞赛的轻量工作流平台
 - Pydantic
 - scikit-learn / joblib / numpy / Pillow
 - EasyOCR / torch / OpenCV 作为 OCR 可选重依赖
-- speech 模板：DFRobot 串口 TTS、行空板关键词识别接口、Jetson 语音智能体接口
+- speech 模板：DFRobot 串口 TTS、行空板关键词识别接口、行空板 M10 语音接口
 - pytest
 - ruff
 - GitHub 交付说明：`docs/GITHUB_RELEASE.md`
@@ -134,6 +141,8 @@ workspace/
 - `template_service.py`：生成训练脚本、预测脚本、AI runtime、样例数据、Notebook、硬件说明、提交材料说明和竞赛核对清单。
 - `export_service.py`：将生成物打包为 zip。
 - `speech/` 导出目录：生成语音硬件代码、语音配置和部署说明。
+- `scripts/start_studio.py --edition smart_museum`：启动智能博物独立版。
+- `scripts/start_studio.py --edition future_creator`：启动优创未来独立版。
 
 ## 6. 运行方式
 
@@ -150,6 +159,13 @@ python -m pip install easyocr opencv-python-headless torch
 
 ```bash
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+启动独立版本：
+
+```bash
+python scripts/start_studio.py --edition smart_museum
+python scripts/start_studio.py --edition future_creator
 ```
 
 打开：
@@ -194,7 +210,7 @@ python -m ruff check app tests
 - OCR 任务是否生成 EasyOCR 验证包；缺少 EasyOCR/torch/opencv 时是否明确失败。
 - 智能博物任务是否生成 DFRobot TTS 模板。
 - 优创小学/初中是否生成行空板关键词语音模板。
-- 优创高中是否生成 Jetson 语音智能体接口。
+- 优创高中是否生成行空板 M10 语音接口。
 - 导出 zip 是否包含必需文件。
 - 首页、任务页、生成页、下载路由是否可用。
 - 生成的竞赛核对清单是否包含 PDF 中的关键要求。
@@ -203,9 +219,9 @@ python -m ruff check app tests
 
 当前版本的本地验证结果：
 
-- `python -m pytest -q`：30 passed。
+- `python -m pytest -q`：35 passed。
 - `python -m ruff check app tests scripts`：All checks passed。
-- `python scripts/acceptance_check.py --rounds 5 --require-ai --with-web`：通过，包含 5 轮任务包生成与 AI 运行、首页、10 个任务页、10 次表单生成和 10 个 zip 下载检查，共 71 项检查。
+- `python scripts/acceptance_check.py --rounds 5 --require-ai --with-web`：通过，包含 5 轮任务包生成与 AI 运行、首页、10 个任务页；两个独立版本分别只显示本比赛任务、10 次表单生成和 10 个 zip 下载检查，共 71 项检查。
 
 这些结果说明平台可以：
 
@@ -219,7 +235,7 @@ python -m ruff check app tests
 - 为 OCR/错别字任务生成 EasyOCR 验证包；当前 OCR 增强环境已通过 `--require-ai` 验收。
 - 为智能博物生成 DFRobot 语音合成模块播报代码。
 - 为优创未来小学/初中生成行空板关键词语音互动模板。
-- 为优创未来高中生成 Jetson Super Nano 外接麦克风语音智能体接口。
+- 为优创未来高中生成行空板 M10 语音接口与 DFRobot 外设扩展接口。
 
 测试不能证明真实硬件、真实语音识别、真实大模型或机械控制已经完成。它证明的是：平台可以在本地样例数据上完成非 OCR AI 训练/推理闭环；OCR 真实识别闭环取决于 EasyOCR 增强环境。
 
@@ -228,9 +244,9 @@ python -m ruff check app tests
 下一阶段应按优先级补现场能力：
 
 1. 把样例数据替换为学生采集的真实现场数据。
-2. 接入行空板真实麦克风 API、DFRobot TTS 串口实物和 Jetson 外接麦克风。
+2. 接入行空板 M10 真实麦克风 API、DFRobot TTS 串口实物和 DFRobot 外设接口。
 3. 高中组再评估本地大模型智能体。
-4. 对接 Jetson、树莓派、ESP32 或机械控制硬件。
+4. 对接 行空板 M10、DFRobot 传感器和执行器外设。
 5. 增加真实比赛素材回放测试。
 6. 完成 GitHub 仓库发布和学生机安装包实机验证。
 

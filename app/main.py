@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
@@ -8,18 +9,35 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
-from app.models import GenerationRequest, GenerationResult
+from app.models import AppEdition, GenerationRequest, GenerationResult
 from app.services.export_service import ExportService
 from app.services.template_service import TemplateService
 from app.services.workspace_service import WorkspaceService
-from app.task_catalog import get_competition, get_task, list_competitions
+from app.task_catalog import get_competition, get_task, list_competitions, normalize_edition
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_WORKSPACE_ROOT = PROJECT_ROOT / "workspace"
 
 
-def create_app(workspace_root: Path = DEFAULT_WORKSPACE_ROOT) -> FastAPI:
-    app = FastAPI(title="Lite DeepLearning Studio")
+EDITION_LABELS = {
+    "all": "Lite DeepLearning Studio",
+    "smart_museum": "智能博物轻量版",
+    "future_creator": "优创未来轻量版",
+}
+
+EDITION_INTROS = {
+    "all": "选择比赛任务，生成可运行的比赛材料。",
+    "smart_museum": "面向智能博物任务，使用行空板 M10 + DFRobot 开源硬件外设完成识别、展示和播报。",
+    "future_creator": "面向优创未来任务，使用行空板 M10 + DFRobot 开源硬件外设完成语音、视觉和决策项目。",
+}
+
+
+def create_app(
+    workspace_root: Path = DEFAULT_WORKSPACE_ROOT,
+    edition: AppEdition | str | None = None,
+) -> FastAPI:
+    app_edition = normalize_edition(edition or os.environ.get("LDS_EDITION", "all"))
+    app = FastAPI(title=EDITION_LABELS[app_edition])
     templates = Jinja2Templates(directory=PROJECT_ROOT / "templates")
     app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "static"), name="static")
 
@@ -34,7 +52,10 @@ def create_app(workspace_root: Path = DEFAULT_WORKSPACE_ROOT) -> FastAPI:
             name="index.html",
             context={
                 "request": request,
-                "competitions": list_competitions(),
+                "competitions": list_competitions(app_edition),
+                "app_title": EDITION_LABELS[app_edition],
+                "app_intro": EDITION_INTROS[app_edition],
+                "app_edition": app_edition,
             },
         )
 
@@ -44,8 +65,8 @@ def create_app(workspace_root: Path = DEFAULT_WORKSPACE_ROOT) -> FastAPI:
 
     @app.get("/workflow/{competition_slug}/{task_slug}", response_class=HTMLResponse)
     def workflow(request: Request, competition_slug: str, task_slug: str) -> HTMLResponse:
-        competition = get_competition(competition_slug)
-        task = get_task(competition_slug, task_slug)
+        competition = get_competition(competition_slug, app_edition)
+        task = get_task(competition_slug, task_slug, app_edition)
         if competition is None or task is None:
             raise HTTPException(status_code=404, detail="没有找到这个任务")
 
@@ -57,6 +78,9 @@ def create_app(workspace_root: Path = DEFAULT_WORKSPACE_ROOT) -> FastAPI:
                 "competition": competition,
                 "task": task,
                 "hardware_labels": HARDWARE_LABELS,
+                "app_title": EDITION_LABELS[app_edition],
+                "app_intro": EDITION_INTROS[app_edition],
+                "app_edition": app_edition,
                 "error": "",
             },
         )
@@ -68,7 +92,7 @@ def create_app(workspace_root: Path = DEFAULT_WORKSPACE_ROOT) -> FastAPI:
         task_slug: str = Form(...),
         project_name: str = Form(...),
         student_name: str = Form(""),
-        target_hardware: str = Form("student_laptop"),
+        target_hardware: str = Form("unihiker_m10"),
         dataset_notes: str = Form(""),
         class_labels: str = Form(""),
         text_csv: str = Form(""),
@@ -77,8 +101,8 @@ def create_app(workspace_root: Path = DEFAULT_WORKSPACE_ROOT) -> FastAPI:
         ocr_correct_text: str = Form(""),
         ocr_observed_text: str = Form(""),
     ) -> HTMLResponse:
-        competition = get_competition(competition_slug)
-        task = get_task(competition_slug, task_slug)
+        competition = get_competition(competition_slug, app_edition)
+        task = get_task(competition_slug, task_slug, app_edition)
         if competition is None or task is None:
             raise HTTPException(status_code=404, detail="没有找到这个任务")
 
@@ -106,6 +130,9 @@ def create_app(workspace_root: Path = DEFAULT_WORKSPACE_ROOT) -> FastAPI:
                     "competition": competition,
                     "task": task,
                     "hardware_labels": HARDWARE_LABELS,
+                    "app_title": EDITION_LABELS[app_edition],
+                    "app_intro": EDITION_INTROS[app_edition],
+                    "app_edition": app_edition,
                     "error": "请检查项目名称、硬件选择和类别填写。",
                     "details": exc.errors(),
                 },
@@ -134,6 +161,9 @@ def create_app(workspace_root: Path = DEFAULT_WORKSPACE_ROOT) -> FastAPI:
                     path.relative_to(workspace.generated_dir).as_posix() for path in generated_files
                 ],
                 "download_url": f"/exports/{workspace.project_id}/{export_path.name}",
+                "app_title": EDITION_LABELS[app_edition],
+                "app_intro": EDITION_INTROS[app_edition],
+                "app_edition": app_edition,
             },
         )
 
@@ -157,6 +187,9 @@ def create_app(workspace_root: Path = DEFAULT_WORKSPACE_ROOT) -> FastAPI:
                 "request": request,
                 "title": "没有找到这个任务",
                 "message": str(exc.detail),
+                "app_title": EDITION_LABELS[app_edition],
+                "app_intro": EDITION_INTROS[app_edition],
+                "app_edition": app_edition,
             },
             status_code=404,
         )
@@ -173,6 +206,7 @@ def parse_labels(raw_labels: str) -> list[str]:
 
 
 HARDWARE_LABELS = {
+    "unihiker_m10": "行空板 M10 + DFRobot 开源硬件外设",
     "student_laptop": "学生笔记本",
     "jetson_nano": "NVIDIA Jetson Nano",
     "raspberry_pi": "树莓派 / 行空板",
@@ -181,4 +215,4 @@ HARDWARE_LABELS = {
 }
 
 
-app = create_app()
+app = create_app(edition=os.environ.get("LDS_EDITION", "all"))

@@ -71,6 +71,12 @@ def main() -> int:
     parser.add_argument("--rounds", type=int, default=3)
     parser.add_argument("--require-ai", action="store_true")
     parser.add_argument(
+        "--edition",
+        choices=["all", "smart_museum", "future_creator"],
+        default="all",
+        help="Only validate one independent app edition.",
+    )
+    parser.add_argument(
         "--with-web",
         action="store_true",
         help="Also check homepage, task pages, form generation, and zip downloads.",
@@ -82,6 +88,7 @@ def main() -> int:
         "rounds": args.rounds,
         "require_ai": args.require_ai,
         "with_web": args.with_web,
+        "edition": args.edition,
         "checks": [],
     }
     temp_dir = Path(tempfile.mkdtemp(prefix="lds-acceptance-"))
@@ -90,10 +97,18 @@ def main() -> int:
     try:
         for round_index in range(1, args.rounds + 1):
             round_root = temp_dir / f"round-{round_index}"
-            failures.extend(run_round(round_index, round_root, report, require_ai=args.require_ai))
+            failures.extend(
+                run_round(
+                    round_index,
+                    round_root,
+                    report,
+                    require_ai=args.require_ai,
+                    edition=args.edition,
+                )
+            )
 
         if args.with_web:
-            failures.extend(run_web_checks(temp_dir / "web", report))
+            failures.extend(run_web_checks(temp_dir / "web", report, edition=args.edition))
 
         report_path = Path("docs/acceptance-test-report.json")
         report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -123,6 +138,7 @@ def run_round(
     round_root: Path,
     report: dict[str, object],
     require_ai: bool,
+    edition: str,
 ) -> list[str]:
     failures: list[str] = []
     workspace_service = WorkspaceService(round_root)
@@ -130,7 +146,7 @@ def run_round(
     export_service = ExportService()
 
     platform_text_by_competition: dict[str, list[str]] = {}
-    for competition in list_competitions():
+    for competition in list_competitions(edition):
         platform_text_by_competition.setdefault(competition.slug, [])
         for task in competition.tasks:
             request = GenerationRequest(
@@ -239,6 +255,8 @@ def validate_platform_coverage(
 ) -> list[str]:
     failures: list[str] = []
     for competition_slug, keywords in PLATFORM_REQUIREMENT_KEYWORDS.items():
+        if competition_slug not in platform_text_by_competition:
+            continue
         combined = "\n".join(platform_text_by_competition.get(competition_slug, []))
         missing = [keyword for keyword in keywords if keyword not in combined]
         check = {
@@ -254,17 +272,17 @@ def validate_platform_coverage(
     return failures
 
 
-def run_web_checks(workspace_root: Path, report: dict[str, object]) -> list[str]:
+def run_web_checks(workspace_root: Path, report: dict[str, object], edition: str) -> list[str]:
     from fastapi.testclient import TestClient
 
     failures: list[str] = []
-    client = TestClient(create_app(workspace_root=workspace_root))
+    client = TestClient(create_app(workspace_root=workspace_root, edition=edition))
 
     index_response = client.get("/")
     index_failures: list[str] = []
     if index_response.status_code != 200:
         index_failures.append(f"homepage returned {index_response.status_code}")
-    for competition in list_competitions():
+    for competition in list_competitions(edition):
         if competition.title not in index_response.text:
             index_failures.append(f"homepage missing competition {competition.title}")
 
@@ -279,7 +297,7 @@ def run_web_checks(workspace_root: Path, report: dict[str, object]) -> list[str]
     )
     failures.extend(index_failures)
 
-    for competition in list_competitions():
+    for competition in list_competitions(edition):
         for task in competition.tasks:
             task_failures = run_web_task_check(client, competition.slug, task)
             report["checks"].append(
