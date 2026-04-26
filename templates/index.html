@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}任务工作流{% endblock %}
+
+{% block content %}
+  <section class="intro">
+    <div>
+      <p class="eyebrow">学生竞赛任务生成器</p>
+      <h1>选择一个任务，生成可运行的比赛材料。</h1>
+    </div>
+    <p class="intro-copy">
+      默认走轻量流程：填少量信息，生成脚本、Notebook、硬件说明和导出包。
+    </p>
+  </section>
+
+  <section class="competition-list">
+    {% for competition in competitions %}
+      <article class="competition">
+        <div class="competition-heading">
+          <h2>{{ competition.title }}</h2>
+          <p>{{ competition.summary }}</p>
+        </div>
+        <div class="task-grid">
+          {% for task in competition.tasks %}
+            <a class="task-card" href="/workflow/{{ competition.slug }}/{{ task.slug }}">
+              <span class="task-label">工作流</span>
+              <h3>{{ task.title }}</h3>
+              <p>{{ task.summary }}</p>
+              <span class="task-action">开始</span>
+            </a>
+          {% endfor %}
+        </div>
+      </article>
+    {% endfor %}
+  </section>
+{% endblock %}

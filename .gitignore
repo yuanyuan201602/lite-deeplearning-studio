@@ -1,0 +1,39 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+*$py.class
+.python-version
+.venv/
+venv/
+env/
+
+# Test, lint, and coverage output
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local generated project data
+.superpowers/
+.playwright-mcp/
+workspace/
+tmp/
+*-snapshot.md
+chatgpt-share-snapshot.md
+
+# Build and release artifacts
+build/
+dist/
+*.egg-info/
+*.zip
+
+# Editor and OS noise
+.DS_Store
+.idea/
+.vscode/
+
+# Keep repository delivery files visible even with broad artifact ignores.
+!docs/
+!scripts/
+!packaging/

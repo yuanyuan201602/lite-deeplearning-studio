@@ -1,0 +1,1 @@
+"""Lightweight competition workflow app."""

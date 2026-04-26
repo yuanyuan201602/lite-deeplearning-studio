@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}任务包已生成{% endblock %}
+
+{% block content %}
+  <section class="result-layout">
+    <div class="result-summary">
+      <p class="eyebrow">{{ competition.title }} / {{ task.title }}</p>
+      <h1>任务包已生成</h1>
+      <p>项目：{{ generation.project_name }}</p>
+      <p>AI 能力：{{ task.ai_capability }}</p>
+      <p>data_origin：{{ generation.data_origin }}</p>
+      <p>导出包：{{ result.export_path.name }}</p>
+    </div>
+
+    <div class="result-files">
+      <h2>生成文件</h2>
+      <p>任务包已包含训练脚本、预测脚本、样例数据、AI runtime 和验证说明。</p>
+      <ul>
+        {% for file in files %}
+          <li>{{ file }}</li>
+        {% endfor %}
+      </ul>
+      <div class="actions">
+        <a class="button" href="{{ download_url }}">下载任务包</a>
+        <a class="button" href="/">继续生成其他任务</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}

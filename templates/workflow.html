@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}{{ task.title }}{% endblock %}
+
+{% block content %}
+  <section class="workflow-layout">
+    <aside class="workflow-steps">
+      <p class="eyebrow">{{ competition.title }}</p>
+      <h1>{{ task.title }}</h1>
+      <p>{{ task.student_goal }}</p>
+      <ol>
+        {% for step in task.starter_steps %}
+          <li>{{ step }}</li>
+        {% endfor %}
+      </ol>
+      <div class="ai-status">
+        <h2>真实 AI 能力</h2>
+        <p>能力：{{ task.ai_capability }}</p>
+        <p>样例数据：{{ task.sample_dataset_kind }}</p>
+        <p>依赖：{{ task.runtime_requirements | join(", ") }}</p>
+        {% if task.paused_features %}
+          <p>本轮暂停：{{ task.paused_features | join(", ") }}</p>
+        {% endif %}
+      </div>
+    </aside>
+
+    <section class="form-panel">
+      <div class="panel-heading">
+        <h2>生成任务包</h2>
+        <p>填写后会生成脚本、Notebook、硬件说明和 zip 包。</p>
+      </div>
+
+      {% if error %}
+        <div class="error-box">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="/generate">
+        <input type="hidden" name="competition_slug" value="{{ competition.slug }}" />
+        <input type="hidden" name="task_slug" value="{{ task.slug }}" />
+
+        <label>
+          项目名称
+          <input name="project_name" required maxlength="80" placeholder="例如：非遗分类演示" />
+        </label>
+
+        <label>
+          学生姓名
+          <input name="student_name" maxlength="80" placeholder="可选" />
+        </label>
+
+        <label>
+          目标硬件
+          <select name="target_hardware">
+            {% for value, label in hardware_labels.items() %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>
+          类别或关键词
+          <input name="class_labels" placeholder="刺绣, 陶艺, 剪纸" />
+        </label>
+
+        <label>
+          数据说明
+          <textarea name="dataset_notes" rows="5" placeholder="数据来自哪里？大概有几类？学生要怎么替换？"></textarea>
+        </label>
+
+        {% if task.sample_dataset_kind == "text" %}
+          <label>
+            粘贴文本 CSV
+            <textarea name="text_csv" rows="7" placeholder="text,label&#10;昆曲唱腔,传统戏剧&#10;陶瓷烧制,传统技艺"></textarea>
+          </label>
+        {% elif task.sample_dataset_kind == "qa" %}
+          <label>
+            粘贴问答
+            <textarea name="qa_text" rows="7" placeholder="什么是昆曲	昆曲是传统戏剧。&#10;为什么保护非遗	为了传承文化记忆。"></textarea>
+          </label>
+        {% elif task.sample_dataset_kind == "sensor" %}
+          <label>
+            粘贴传感器 CSV
+            <textarea name="sensor_csv" rows="7" placeholder="temperature,distance,signal,action&#10;38.6,12,1,提醒就诊&#10;36.7,45,0,继续观察"></textarea>
+          </label>
+        {% elif task.sample_dataset_kind == "ocr" %}
+          <label>
+            OCR 标准文本
+            <textarea name="ocr_correct_text" rows="3" placeholder="保护为主抢救第一"></textarea>
+          </label>
+          <label>
+            OCR 观察文本
+            <textarea name="ocr_observed_text" rows="3" placeholder="保护为王抢救第一"></textarea>
+          </label>
+        {% endif %}
+
+        <div class="output-preview">
+          <h3>将生成</h3>
+          <ul>
+            {% for output in task.required_outputs %}
+              <li>{{ output }}</li>
+            {% endfor %}
+            <li>data_sample/</li>
+            <li>models/</li>
+          </ul>
+        </div>
+
+        <button type="submit">生成任务包</button>
+      </form>
+    </section>
+  </section>
+{% endblock %}

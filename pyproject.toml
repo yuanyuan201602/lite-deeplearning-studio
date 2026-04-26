@@ -1,0 +1,59 @@
+[project]
+name = "lite-deeplearning-studio"
+version = "0.1.0"
+description = "Lightweight competition workflow generator for student AI tasks."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "jinja2>=3.1.4",
+  "pillow>=10.0.0",
+  "pydantic>=2.8.0",
+  "python-multipart>=0.0.9",
+  "uvicorn>=0.30.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27.0",
+  "pytest>=8.3.0",
+  "ruff>=0.6.0",
+]
+ai = [
+  "joblib>=1.5.0",
+  "numpy>=2.0.0",
+  "pandas>=2.2.0",
+  "pillow>=10.0.0",
+  "scikit-learn>=1.5.0",
+]
+ocr = [
+  "easyocr>=1.7.0",
+  "opencv-python-headless>=4.10.0",
+  "torch>=2.3.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["workspace*", "tmp*", "templates*", "static*", "docs*", "tests*", "scripts*", "packaging*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+  ".superpowers",
+  "workspace",
+  "tmp",
+  ".playwright-mcp",
+  "chatgpt-share-snapshot.md",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
