@@ -58,15 +58,17 @@ python scripts/acceptance_check.py --rounds 5 --require-ai
 
 ```bash
 python packaging/build_release.py
+python packaging/build_student_installer.py
 ```
 
 默认生成：
 
 ```text
 dist/lite-deeplearning-studio-source.zip
+dist/lite-deeplearning-studio-student-installer.zip
 ```
 
-这个脚本是轻量源码打包脚本，不引入 PyInstaller、Electron 或其他重型打包器。
+这两个脚本是轻量打包脚本，不引入 PyInstaller、Electron 或其他重型打包器。`source.zip` 面向开发者和教师，`student-installer.zip` 面向学生机，内含 Windows/macOS/Linux 安装和启动脚本。
 
 ## 4. GitHub Release 内容模板
 
@@ -93,7 +95,7 @@ Release 说明示例：
 
 ## 附件
 
-下载 `lite-deeplearning-studio-source.zip`，解压后按 `docs/INSTALLATION.md` 操作。
+下载 `lite-deeplearning-studio-student-installer.zip`，解压后按 `README_STUDENT_INSTALL.md` 操作。
 ```
 
 ## 5. 学生交付建议
@@ -101,9 +103,9 @@ Release 说明示例：
 给学生的最短说明：
 
 ```text
-1. 下载 Release 附件 lite-deeplearning-studio-source.zip。
+1. 下载 Release 附件 lite-deeplearning-studio-student-installer.zip。
 2. 解压并进入目录。
-3. 执行 python -m pip install -e .
-4. 执行 python scripts/start_studio.py。
+3. macOS/Linux 执行 `./install_macos_linux.sh`；Windows 执行 `.\install_windows.ps1`。
+4. macOS/Linux 执行 `./start_macos_linux.sh`；Windows 执行 `.\start_windows.ps1`。
 5. 打开 http://127.0.0.1:8000。
 ```

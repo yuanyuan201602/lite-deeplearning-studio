@@ -29,6 +29,8 @@ def test_repository_delivery_docs_exist_with_install_paths() -> None:
         "python -m uvicorn app.main:app",
         "python scripts/start_studio.py",
         "python packaging/build_release.py",
+        "python packaging/build_student_installer.py",
+        "lite-deeplearning-studio-student-installer.zip",
     ]:
         assert keyword in combined_docs
 
@@ -37,10 +39,23 @@ def test_delivery_scripts_exist_and_are_import_safe() -> None:
     for script_path in [
         "scripts/start_studio.py",
         "packaging/build_release.py",
+        "packaging/build_student_installer.py",
     ]:
         script = PROJECT_ROOT / script_path
         assert script.is_file(), f"{script_path} is missing"
         assert "if __name__ == \"__main__\":" in script.read_text(encoding="utf-8")
+
+
+def test_student_installer_script_includes_platform_installers() -> None:
+    content = read_text("packaging/build_student_installer.py")
+
+    for keyword in [
+        "install_macos_linux.sh",
+        "start_macos_linux.sh",
+        "install_windows.ps1",
+        "start_windows.ps1",
+    ]:
+        assert keyword in content
 
 
 def test_gitignore_covers_local_artifacts_without_hiding_docs() -> None:

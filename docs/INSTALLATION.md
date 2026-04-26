@@ -103,6 +103,33 @@ dist/lite-deeplearning-studio-source.zip
 
 发布包会包含应用源码、模板、样式、文档、脚本和测试，不包含 `workspace/`、`tmp/`、虚拟环境、缓存和旧 zip。
 
+也可以生成更适合直接发给学生机的安装包：
+
+```bash
+python packaging/build_student_installer.py
+```
+
+默认输出：
+
+```text
+dist/lite-deeplearning-studio-student-installer.zip
+```
+
+学生解压后按系统运行：
+
+- macOS / Linux：`./install_macos_linux.sh`，然后 `./start_macos_linux.sh`
+- Windows PowerShell：`.\install_windows.ps1`，然后 `.\start_windows.ps1`
+
+如果需要 OCR 增强能力，在安装脚本后追加 `ocr`：
+
+```bash
+./install_macos_linux.sh ocr
+```
+
+```powershell
+.\install_windows.ps1 ocr
+```
+
 ## 7. 常见问题
 
 ### 端口被占用
