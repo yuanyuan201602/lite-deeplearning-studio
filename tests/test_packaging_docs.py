@@ -31,6 +31,7 @@ def test_repository_delivery_docs_exist_with_install_paths() -> None:
         "python packaging/build_release.py",
         "python packaging/build_student_installer.py",
         "lite-deeplearning-studio-student-installer.zip",
+        "LiteDeepLearningStudio-Windows-Setup.zip",
     ]:
         assert keyword in combined_docs
 
@@ -52,6 +53,11 @@ def test_student_installer_script_includes_platform_installers() -> None:
     for keyword in [
         "install_macos_linux.sh",
         "start_macos_linux.sh",
+        "setup.bat",
+        "setup_ocr.bat",
+        "start.bat",
+        "uninstall.bat",
+        "create_desktop_shortcut.ps1",
         "install_windows.ps1",
         "start_windows.ps1",
     ]:

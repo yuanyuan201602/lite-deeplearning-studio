@@ -50,13 +50,21 @@ python packaging/build_release.py
 
 `packaging/build_release.py` 会生成轻量源码发布包，默认输出到 `dist/lite-deeplearning-studio-source.zip`。GitHub 仓库和 Release 交付流程见 [docs/GITHUB_RELEASE.md](docs/GITHUB_RELEASE.md)。
 
-给学生机分发时，推荐生成带安装脚本的安装包：
+给学生机分发时，推荐生成带 Windows setup 入口的安装包：
 
 ```bash
 python packaging/build_student_installer.py
 ```
 
 默认输出到 `dist/lite-deeplearning-studio-student-installer.zip`。
+
+Windows 学生解压后双击 `setup.bat` 安装，再双击 `start.bat` 启动。
+
+面向 Windows 分发时，也可以生成更直观的文件名：
+
+```bash
+python packaging/build_student_installer.py --output dist/LiteDeepLearningStudio-Windows-Setup.zip
+```
 
 ## 项目结构
 

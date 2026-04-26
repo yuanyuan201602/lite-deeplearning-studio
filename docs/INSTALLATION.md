@@ -115,10 +115,23 @@ python packaging/build_student_installer.py
 dist/lite-deeplearning-studio-student-installer.zip
 ```
 
-学生解压后按系统运行：
+Windows 学生机也可以生成更像 setup 分发包的文件名：
+
+```bash
+python packaging/build_student_installer.py --output dist/LiteDeepLearningStudio-Windows-Setup.zip
+```
+
+Windows 学生机推荐使用类似 setup 的双击安装入口：
+
+- 基础安装：双击 `setup.bat`
+- OCR 增强安装：双击 `setup_ocr.bat`
+- 启动：双击 `start.bat`，或使用安装后生成的桌面快捷方式
+- 卸载本地运行环境：双击 `uninstall.bat`
+
+其他系统按系统运行：
 
 - macOS / Linux：`./install_macos_linux.sh`，然后 `./start_macos_linux.sh`
-- Windows PowerShell：`.\install_windows.ps1`，然后 `.\start_windows.ps1`
+- Windows PowerShell 备用方式：`.\install_windows.ps1`，然后 `.\start_windows.ps1`
 
 如果需要 OCR 增强能力，在安装脚本后追加 `ocr`：
 

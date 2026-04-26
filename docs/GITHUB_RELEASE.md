@@ -68,7 +68,13 @@ dist/lite-deeplearning-studio-source.zip
 dist/lite-deeplearning-studio-student-installer.zip
 ```
 
-这两个脚本是轻量打包脚本，不引入 PyInstaller、Electron 或其他重型打包器。`source.zip` 面向开发者和教师，`student-installer.zip` 面向学生机，内含 Windows/macOS/Linux 安装和启动脚本。
+也可以额外生成一个更适合 Windows 学生识别的附件名：
+
+```bash
+python packaging/build_student_installer.py --output dist/LiteDeepLearningStudio-Windows-Setup.zip
+```
+
+这些脚本是轻量打包脚本，不引入 PyInstaller、Electron 或其他重型打包器。`source.zip` 面向开发者和教师，`student-installer.zip` / `Windows-Setup.zip` 面向学生机，内含 Windows 类 setup 入口、Windows/macOS/Linux 安装和启动脚本。
 
 ## 4. GitHub Release 内容模板
 
@@ -95,7 +101,7 @@ Release 说明示例：
 
 ## 附件
 
-下载 `lite-deeplearning-studio-student-installer.zip`，解压后按 `README_STUDENT_INSTALL.md` 操作。
+下载 `LiteDeepLearningStudio-Windows-Setup.zip`，解压后双击 `setup.bat`。
 ```
 
 ## 5. 学生交付建议
@@ -103,9 +109,9 @@ Release 说明示例：
 给学生的最短说明：
 
 ```text
-1. 下载 Release 附件 lite-deeplearning-studio-student-installer.zip。
+1. 下载 Release 附件 `LiteDeepLearningStudio-Windows-Setup.zip`。
 2. 解压并进入目录。
-3. macOS/Linux 执行 `./install_macos_linux.sh`；Windows 执行 `.\install_windows.ps1`。
-4. macOS/Linux 执行 `./start_macos_linux.sh`；Windows 执行 `.\start_windows.ps1`。
+3. Windows 双击 `setup.bat`；需要 OCR 时双击 `setup_ocr.bat`。
+4. 双击 `start.bat`，或使用桌面快捷方式。
 5. 打开 http://127.0.0.1:8000。
 ```
