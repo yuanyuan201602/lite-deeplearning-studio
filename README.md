@@ -45,6 +45,12 @@ http://127.0.0.1:8000
 
 更完整的学生机安装、Windows/macOS 注意事项和常见问题见 [docs/INSTALLATION.md](docs/INSTALLATION.md)。
 
+学生培训文档：
+
+- [智能博物轻量版学生培训文档](docs/TRAINING_SMART_MUSEUM.md)
+- [优创未来轻量版学生培训文档](docs/TRAINING_FUTURE_CREATOR.md)
+- [培训文档索引](docs/TRAINING_INDEX.md)
+
 ## 常用命令
 
 ```bash

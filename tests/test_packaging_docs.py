@@ -15,6 +15,9 @@ def test_repository_delivery_docs_exist_with_install_paths() -> None:
         "README.md",
         "docs/INSTALLATION.md",
         "docs/GITHUB_RELEASE.md",
+        "docs/TRAINING_INDEX.md",
+        "docs/TRAINING_SMART_MUSEUM.md",
+        "docs/TRAINING_FUTURE_CREATOR.md",
     ]
 
     for doc_path in required_docs:
@@ -36,8 +39,39 @@ def test_repository_delivery_docs_exist_with_install_paths() -> None:
         "FutureCreator-Windows-Setup.zip",
         "行空板 M10",
         "DFRobot",
+        "SmartMuseum-Windows-Setup.zip",
+        "FutureCreator-Windows-Setup.zip",
+        "一键安装.bat",
+        "启动软件.bat",
     ]:
         assert keyword in combined_docs
+
+
+def test_training_docs_cover_install_and_competition_tasks() -> None:
+    smart_museum = read_text("docs/TRAINING_SMART_MUSEUM.md")
+    future_creator = read_text("docs/TRAINING_FUTURE_CREATOR.md")
+
+    for keyword in [
+        "SmartMuseum-Windows-Setup.zip",
+        "挑战一：认识非遗传承匠人",
+        "挑战二：了解非遗专业知识",
+        "挑战三：非遗文化分类学览",
+        "挑战四：非遗文化深化认知",
+        "行空板 M10",
+        "DFRobot",
+    ]:
+        assert keyword in smart_museum
+
+    for keyword in [
+        "FutureCreator-Windows-Setup.zip",
+        "小学组：语音互动与单类图像识别",
+        "初中组：视觉模型训练与调用",
+        "高中组：大模型语音互动、视觉识别与运动控制",
+        "传感器决策程序模板",
+        "行空板 M10",
+        "DFRobot",
+    ]:
+        assert keyword in future_creator
 
 
 def test_delivery_scripts_exist_and_are_import_safe() -> None:

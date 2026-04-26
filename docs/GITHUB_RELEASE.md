@@ -111,6 +111,12 @@ Release 说明示例：
 ## 附件
 
 下载 `LiteDeepLearningStudio-Windows-Setup.zip`，解压后双击 `一键安装.bat`。
+
+## 培训文档
+
+- `docs/TRAINING_SMART_MUSEUM.md`
+- `docs/TRAINING_FUTURE_CREATOR.md`
+- `docs/TRAINING_INDEX.md`
 ```
 
 ## 5. 学生交付建议
