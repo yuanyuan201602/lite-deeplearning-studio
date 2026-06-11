@@ -16,6 +16,7 @@ class TemplateService:
         workspace: ProjectWorkspace,
         task: TaskDefinition,
         request: GenerationRequest,
+        user_images: dict[str, Path] | None = None,
     ) -> list[Path]:
         files = {
             "README.md": self._render_readme(task, request),
@@ -43,7 +44,9 @@ class TemplateService:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8")
             written_files.append(path)
-        written_files.extend(self._write_sample_dataset(workspace.generated_dir, task, request))
+        written_files.extend(
+            self._write_sample_dataset(workspace.generated_dir, task, request, user_images)
+        )
         return written_files
 
     def _render_readme(self, task: TaskDefinition, request: GenerationRequest) -> str:
@@ -184,21 +187,19 @@ def train(capability: str) -> None:
     elif capability == "qa_retrieval":
         rows = _read_csv(DATA_DIR / "qa_pairs.csv")
         vectorizer = TfidfVectorizer(analyzer="char", ngram_range=(1, 3))
-        matrix = vectorizer.fit_transform([row["question"] for row in rows])
+        matrix = vectorizer.fit_transform(["".join(row["question"].split()) for row in rows])
         joblib.dump(
             {"vectorizer": vectorizer, "matrix": matrix, "rows": rows},
             MODELS_DIR / "qa_retrieval.joblib",
         )
     elif capability == "sensor_decision_model":
-        rows = _read_csv(DATA_DIR / "sensor_samples.csv")
-        features = [
-            [float(row["temperature"]), float(row["distance"]), float(row["signal"])]
-            for row in rows
-        ]
-        labels = [row["action"] for row in rows]
+        feature_names, features, labels = _read_sensor_csv(DATA_DIR / "sensor_samples.csv")
         model = DecisionTreeClassifier(max_depth=4, random_state=7)
         model.fit(features, labels)
-        joblib.dump(model, MODELS_DIR / "sensor_decision_model.joblib")
+        joblib.dump(
+            {"model": model, "feature_names": feature_names},
+            MODELS_DIR / "sensor_decision_model.joblib",
+        )
     elif capability == "ocr_typo_checker":
         rows = _read_csv(DATA_DIR / "ocr_cases.csv")
         (MODELS_DIR / "ocr_typo_checker.json").write_text(
@@ -222,7 +223,11 @@ def predict(capability: str) -> dict:
         return {"status": "ok", "predictions": predictions}
     if capability == "image_classifier":
         model = joblib.load(MODELS_DIR / "image_classifier.joblib")
-        image_paths = sorted((DATA_DIR / "predict_images").glob("*.png"))
+        image_paths = sorted(
+            path
+            for path in (DATA_DIR / "predict_images").glob("*")
+            if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
+        )
         predictions = []
         for image_path in image_paths:
             prediction = str(model.predict([_image_features(image_path)])[0])
@@ -234,7 +239,7 @@ def predict(capability: str) -> dict:
         samples = _read_csv(DATA_DIR / "predict_questions.csv")
         predictions = []
         for row in samples:
-            query = store["vectorizer"].transform([row["question"]])
+            query = store["vectorizer"].transform(["".join(row["question"].split())])
             scores = cosine_similarity(query, store["matrix"])[0]
             best_index = int(np.argmax(scores))
             answer = store["rows"][best_index]["answer"]
@@ -242,11 +247,13 @@ def predict(capability: str) -> dict:
         _write_json("predictions.json", predictions)
         return {"status": "ok", "predictions": predictions}
     if capability == "sensor_decision_model":
-        model = joblib.load(MODELS_DIR / "sensor_decision_model.joblib")
+        store = joblib.load(MODELS_DIR / "sensor_decision_model.joblib")
+        model = store["model"]
+        feature_names = store["feature_names"]
         samples = _read_csv(DATA_DIR / "predict_sensor.csv")
         predictions = []
         for row in samples:
-            features = [[float(row["temperature"]), float(row["distance"]), float(row["signal"])]]
+            features = [[float(row[name]) for name in feature_names]]
             action = str(model.predict(features)[0])
             predictions.append({"input": row, "action": action})
         _write_json("predictions.json", predictions)
@@ -306,6 +313,16 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(file))
 
 
+def _read_sensor_csv(path: Path) -> tuple[list[str], list[list[float]], list[str]]:
+    """Header-driven: every column except the last is a numeric feature, the last is the action."""
+    with path.open(encoding="utf-8", newline="") as file:
+        rows = [row for row in csv.reader(file) if any(cell.strip() for cell in row)]
+    feature_names = [cell.strip() for cell in rows[0][:-1]]
+    features = [[float(cell) for cell in row[:-1]] for row in rows[1:]]
+    labels = [row[-1].strip() for row in rows[1:]]
+    return feature_names, features, labels
+
+
 def _write_json(name: str, data) -> None:
     (OUTPUTS_DIR / name).write_text(
         json.dumps(data, ensure_ascii=False, indent=2),
@@ -317,18 +334,20 @@ def _load_image_dataset(root: Path) -> tuple[list[list[float]], list[str]]:
     features = []
     labels = []
     for label_dir in sorted(path for path in root.iterdir() if path.is_dir()):
-        for image_path in sorted(label_dir.glob("*.png")):
+        for image_path in sorted(label_dir.glob("*")):
+            if image_path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}:
+                continue
             features.append(_image_features(image_path))
             labels.append(label_dir.name)
     return features, labels
 
 
 def _image_features(path: Path) -> list[float]:
+    # Must stay identical to the studio's in-app feature extraction so the
+    # bundled pre-trained model keeps working here.
     image = Image.open(path).convert("RGB").resize((32, 32))
-    arr = np.asarray(image, dtype=np.float32) / 255.0
-    means = arr.mean(axis=(0, 1))
-    stds = arr.std(axis=(0, 1))
-    return [float(value) for value in np.concatenate([means, stds])]
+    arr = np.asarray(image, dtype=np.float64) / 255.0
+    return arr.flatten().tolist()
 '''
 
     def _render_notebook(self, task: TaskDefinition, request: GenerationRequest) -> str:
@@ -777,13 +796,14 @@ python run.py
         generated_dir: Path,
         task: TaskDefinition,
         request: GenerationRequest,
+        user_images: dict[str, Path] | None = None,
     ) -> list[Path]:
         source_files: list[str]
         if task.sample_dataset_kind == "text":
             paths = self._write_text_dataset(generated_dir, request)
             source_files = ["data_sample/text_samples.csv"]
         elif task.sample_dataset_kind == "image":
-            paths = self._write_image_dataset(generated_dir, request)
+            paths = self._write_image_dataset(generated_dir, request, user_images)
             source_files = ["data_sample/images/", "data_sample/predict_images/"]
         elif task.sample_dataset_kind == "qa":
             paths = self._write_qa_dataset(generated_dir, request)
@@ -794,7 +814,9 @@ python run.py
         else:
             paths = self._write_ocr_dataset(generated_dir, request)
             source_files = ["data_sample/ocr_cases.csv"]
-        paths.append(self._write_data_manifest(generated_dir, task, request, source_files))
+        paths.append(
+            self._write_data_manifest(generated_dir, task, request, source_files, user_images)
+        )
         return paths
 
     def _write_text_dataset(self, generated_dir: Path, request: GenerationRequest) -> list[Path]:
@@ -854,10 +876,9 @@ python run.py
 
     def _write_sensor_dataset(self, generated_dir: Path, request: GenerationRequest) -> list[Path]:
         if request.sensor_csv.strip():
-            sensor_samples = self._normalize_csv(
-                request.sensor_csv,
-                ["temperature", "distance", "signal", "action"],
-            )
+            # Keep the student's own column names: the exported runtime reads the header
+            # and treats the last column as the action label.
+            sensor_samples = request.sensor_csv.strip() + "\n"
         else:
             sensor_samples = self._csv(
                 ["temperature", "distance", "signal", "action"],
@@ -873,15 +894,16 @@ python run.py
             generated_dir,
             {
                 "data_sample/sensor_samples.csv": sensor_samples,
-                "data_sample/predict_sensor.csv": self._csv(
-                    ["temperature", "distance", "signal"],
-                    [
-                        (38.8, 10, 1),
-                        (36.8, 42, 0),
-                    ],
-                ),
+                "data_sample/predict_sensor.csv": self._sensor_predict_csv(sensor_samples),
             },
         )
+
+    def _sensor_predict_csv(self, sensor_samples: str) -> str:
+        """Build predict rows from the training CSV: same feature columns, no action column."""
+        rows = list(csv.reader(StringIO(sensor_samples.strip())))
+        header = rows[0][:-1]
+        feature_rows = [tuple(row[:-1]) for row in rows[1:3] if len(row) == len(rows[0])]
+        return self._csv(header, feature_rows)
 
     def _write_ocr_dataset(self, generated_dir: Path, request: GenerationRequest) -> list[Path]:
         correct_text = request.ocr_correct_text.strip() or "保护为主抢救第一"
@@ -910,7 +932,10 @@ python run.py
         self,
         generated_dir: Path,
         request: GenerationRequest,
+        user_images: dict[str, Path] | None = None,
     ) -> list[Path]:
+        if user_images:
+            return self._copy_user_images(generated_dir, user_images)
         labels = request.class_labels or ["红色卡片", "绿色卡片", "蓝色卡片"]
         colors = [(220, 60, 60), (60, 170, 90), (70, 100, 220)]
         paths: list[Path] = []
@@ -927,6 +952,34 @@ python run.py
             predict_path.parent.mkdir(parents=True, exist_ok=True)
             Image.new("RGB", (64, 64), colors[index % 3]).save(predict_path)
             paths.append(predict_path)
+        return paths
+
+    def _copy_user_images(
+        self,
+        generated_dir: Path,
+        user_images: dict[str, Path],
+    ) -> list[Path]:
+        paths: list[Path] = []
+        for label, source_folder in user_images.items():
+            safe_label = self._safe_label(label)
+            image_files = sorted(path for path in source_folder.glob("*") if path.is_file())
+            for image_file in image_files:
+                target = (
+                    generated_dir / "data_sample" / "images" / safe_label / image_file.name
+                )
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(image_file.read_bytes())
+                paths.append(target)
+            if image_files:
+                predict_target = (
+                    generated_dir
+                    / "data_sample"
+                    / "predict_images"
+                    / f"{safe_label}{image_files[0].suffix}"
+                )
+                predict_target.parent.mkdir(parents=True, exist_ok=True)
+                predict_target.write_bytes(image_files[0].read_bytes())
+                paths.append(predict_target)
         return paths
 
     def _write_files(self, generated_dir: Path, files: dict[str, str]) -> list[Path]:
@@ -975,9 +1028,10 @@ python run.py
         task: TaskDefinition,
         request: GenerationRequest,
         source_files: list[str],
+        user_images: dict[str, Path] | None = None,
     ) -> Path:
         manifest = {
-            "data_origin": self._data_origin(task, request),
+            "data_origin": self._data_origin(task, request, user_images),
             "sample_dataset_kind": task.sample_dataset_kind,
             "source_files": source_files,
         }
@@ -986,13 +1040,18 @@ python run.py
         path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
         return path
 
-    def _data_origin(self, task: TaskDefinition, request: GenerationRequest) -> str:
+    def _data_origin(
+        self,
+        task: TaskDefinition,
+        request: GenerationRequest,
+        user_images: dict[str, Path] | None = None,
+    ) -> str:
         user_data_by_kind = {
             "text": request.text_csv,
             "qa": request.qa_text,
             "sensor": request.sensor_csv,
             "ocr": f"{request.ocr_correct_text}{request.ocr_observed_text}",
-            "image": "",
+            "image": "yes" if user_images else "",
         }
         return "user" if user_data_by_kind[task.sample_dataset_kind].strip() else "sample"
 

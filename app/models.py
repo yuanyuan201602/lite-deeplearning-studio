@@ -92,6 +92,29 @@ class ProjectWorkspace(BaseModel):
     metadata_path: Path
 
 
+class ProjectInfo(BaseModel):
+    project_id: str
+    project_name: str = Field(min_length=1, max_length=80)
+    student_name: str = Field(default="", max_length=80)
+    competition_slug: str
+    task_slug: str
+    target_hardware: HardwareTarget = "unihiker_m10"
+    dataset_notes: str = Field(default="", max_length=1000)
+    created_at: str
+    updated_at: str
+    train_report: dict | None = None
+    export_file: str = ""
+
+
+class ProjectCreateRequest(BaseModel):
+    competition_slug: str
+    task_slug: str
+    project_name: str = Field(min_length=1, max_length=80)
+    student_name: str = Field(default="", max_length=80)
+    target_hardware: HardwareTarget = "unihiker_m10"
+    dataset_notes: str = Field(default="", max_length=1000)
+
+
 class GenerationResult(BaseModel):
     workspace: ProjectWorkspace
     generated_files: list[Path]

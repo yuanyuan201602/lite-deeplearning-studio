@@ -213,7 +213,7 @@ FUTURE_CREATOR_TASKS = [
         ],
         ai_capability="sensor_decision_model",
         sample_dataset_kind="sensor",
-        runtime_requirements=["scikit-learn", "joblib", "numpy", "pandas"],
+        runtime_requirements=["scikit-learn", "joblib", "numpy"],
         voice_profile="none",
         paused_features=["真实传感器连接", "真实执行器控制"],
         suggested_hardware=["unihiker_m10"],

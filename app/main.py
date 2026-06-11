@@ -1,23 +1,25 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
-from app.models import AppEdition, GenerationRequest, GenerationResult
+from app.api import create_api_router, register_ml_error_handler
+from app.models import AppEdition, ProjectCreateRequest
 from app.services.export_service import ExportService
-from app.services.template_service import TemplateService
-from app.services.workspace_service import WorkspaceService
+from app.services.project_service import ProjectService
 from app.task_catalog import get_competition, get_task, list_competitions, normalize_edition
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_WORKSPACE_ROOT = PROJECT_ROOT / "workspace"
 
+SCHOOL_NAME = "南昌市第二十三中学"
 
 EDITION_LABELS = {
     "all": "Lite DeepLearning Studio",
@@ -26,9 +28,23 @@ EDITION_LABELS = {
 }
 
 EDITION_INTROS = {
-    "all": "选择比赛任务，生成可运行的比赛材料。",
-    "smart_museum": "面向智能博物任务，使用行空板 M10 + DFRobot 开源硬件外设完成识别、展示和播报。",
-    "future_creator": "面向优创未来任务，使用行空板 M10 + DFRobot 开源硬件外设完成语音、视觉和决策项目。",
+    "all": "上传数据、训练模型、实时测试，一键导出比赛材料。",
+    "smart_museum": "面向智能博物任务：训练文本分类、问答和查错模型，导出行空板 M10 比赛材料。",
+    "future_creator": "面向优创未来任务：训练图像识别和传感器决策模型，导出行空板 M10 比赛材料。",
+}
+
+HARDWARE_LABELS = {
+    "unihiker_m10": "行空板 M10 + DFRobot 开源硬件外设",
+    "student_laptop": "学生笔记本",
+    "jetson_nano": "NVIDIA Jetson Nano",
+    "raspberry_pi": "树莓派 / 行空板",
+    "esp32": "ESP32",
+    "generic": "其他硬件",
+}
+
+STEP_LABELS = {
+    "default": ["准备数据", "训练模型", "测试效果", "导出材料"],
+    "ocr_typo_checker": ["输入正确文字", "保存正确文字", "查错测试", "导出材料"],
 }
 
 
@@ -41,9 +57,28 @@ def create_app(
     templates = Jinja2Templates(directory=PROJECT_ROOT / "templates")
     app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "static"), name="static")
 
-    workspace_service = WorkspaceService(workspace_root)
-    template_service = TemplateService()
+    project_service = ProjectService(workspace_root)
     export_service = ExportService()
+
+    app.include_router(create_api_router(project_service, export_service, app_edition))
+    register_ml_error_handler(app)
+
+    def base_context(request: Request) -> dict:
+        return {
+            "request": request,
+            "app_title": EDITION_LABELS[app_edition],
+            "app_intro": EDITION_INTROS[app_edition],
+            "app_edition": app_edition,
+            "school_name": SCHOOL_NAME,
+        }
+
+    def visible_projects() -> list:
+        visible_slugs = {competition.slug for competition in list_competitions(app_edition)}
+        return [
+            info
+            for info in project_service.list_projects()
+            if info.competition_slug in visible_slugs
+        ]
 
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request) -> HTMLResponse:
@@ -51,11 +86,9 @@ def create_app(
             request=request,
             name="index.html",
             context={
-                "request": request,
+                **base_context(request),
                 "competitions": list_competitions(app_edition),
-                "app_title": EDITION_LABELS[app_edition],
-                "app_intro": EDITION_INTROS[app_edition],
-                "app_edition": app_edition,
+                "recent_projects": visible_projects()[:6],
             },
         )
 
@@ -69,24 +102,20 @@ def create_app(
         task = get_task(competition_slug, task_slug, app_edition)
         if competition is None or task is None:
             raise HTTPException(status_code=404, detail="没有找到这个任务")
-
         return templates.TemplateResponse(
             request=request,
             name="workflow.html",
             context={
-                "request": request,
+                **base_context(request),
                 "competition": competition,
                 "task": task,
                 "hardware_labels": HARDWARE_LABELS,
-                "app_title": EDITION_LABELS[app_edition],
-                "app_intro": EDITION_INTROS[app_edition],
-                "app_edition": app_edition,
                 "error": "",
             },
         )
 
-    @app.post("/generate", response_class=HTMLResponse)
-    def generate(
+    @app.post("/projects")
+    def create_project(
         request: Request,
         competition_slug: str = Form(...),
         task_slug: str = Form(...),
@@ -94,76 +123,68 @@ def create_app(
         student_name: str = Form(""),
         target_hardware: str = Form("unihiker_m10"),
         dataset_notes: str = Form(""),
-        class_labels: str = Form(""),
-        text_csv: str = Form(""),
-        qa_text: str = Form(""),
-        sensor_csv: str = Form(""),
-        ocr_correct_text: str = Form(""),
-        ocr_observed_text: str = Form(""),
-    ) -> HTMLResponse:
+    ) -> Response:
         competition = get_competition(competition_slug, app_edition)
         task = get_task(competition_slug, task_slug, app_edition)
         if competition is None or task is None:
             raise HTTPException(status_code=404, detail="没有找到这个任务")
-
         try:
-            generation_request = GenerationRequest(
+            create_request = ProjectCreateRequest(
                 competition_slug=competition_slug,
                 task_slug=task_slug,
                 project_name=project_name,
                 student_name=student_name,
                 target_hardware=target_hardware,
                 dataset_notes=dataset_notes,
-                class_labels=parse_labels(class_labels),
-                text_csv=text_csv,
-                qa_text=qa_text,
-                sensor_csv=sensor_csv,
-                ocr_correct_text=ocr_correct_text,
-                ocr_observed_text=ocr_observed_text,
             )
         except ValidationError as exc:
             return templates.TemplateResponse(
                 request=request,
                 name="workflow.html",
                 context={
-                    "request": request,
+                    **base_context(request),
                     "competition": competition,
                     "task": task,
                     "hardware_labels": HARDWARE_LABELS,
-                    "app_title": EDITION_LABELS[app_edition],
-                    "app_intro": EDITION_INTROS[app_edition],
-                    "app_edition": app_edition,
-                    "error": "请检查项目名称、硬件选择和类别填写。",
+                    "error": "请检查项目名称和硬件选择。",
                     "details": exc.errors(),
                 },
                 status_code=422,
             )
+        info = project_service.create_project(create_request)
+        return RedirectResponse(url=f"/project/{info.project_id}", status_code=303)
 
-        workspace = workspace_service.create_workspace(generation_request)
-        generated_files = template_service.render_task_files(workspace, task, generation_request)
-        export_path = export_service.create_zip(workspace)
-        result = GenerationResult(
-            workspace=workspace,
-            generated_files=generated_files,
-            export_path=export_path,
-        )
+    @app.get("/project/{project_id}", response_class=HTMLResponse)
+    def project_page(request: Request, project_id: str) -> HTMLResponse:
+        info = project_service.get_project(project_id)
+        if info is None:
+            raise HTTPException(status_code=404, detail="没有找到这个项目")
+        competition = get_competition(info.competition_slug, app_edition)
+        task = get_task(info.competition_slug, info.task_slug, app_edition)
+        if competition is None or task is None:
+            raise HTTPException(status_code=404, detail="没有找到这个任务")
 
+        initial_state = {
+            "project": info.model_dump(),
+            "dataset": project_service.dataset_summary(info, task.sample_dataset_kind),
+            "capability": task.ai_capability,
+            "dataset_kind": task.sample_dataset_kind,
+        }
         return templates.TemplateResponse(
             request=request,
-            name="result.html",
+            name="project.html",
             context={
-                "request": request,
+                **base_context(request),
                 "competition": competition,
                 "task": task,
-                "generation": generation_request,
-                "result": result,
-                "files": [
-                    path.relative_to(workspace.generated_dir).as_posix() for path in generated_files
-                ],
-                "download_url": f"/exports/{workspace.project_id}/{export_path.name}",
-                "app_title": EDITION_LABELS[app_edition],
-                "app_intro": EDITION_INTROS[app_edition],
-                "app_edition": app_edition,
+                "info": info,
+                "hardware_labels": HARDWARE_LABELS,
+                "step_labels": STEP_LABELS.get(task.ai_capability, STEP_LABELS["default"]),
+                # Rendered with | safe inside a <script> tag, so escape "<" to keep
+                # student-provided text from closing the tag.
+                "initial_state_json": json.dumps(initial_state, ensure_ascii=False).replace(
+                    "<", "\\u003c"
+                ),
             },
         )
 
@@ -179,40 +200,25 @@ def create_app(
         )
 
     @app.exception_handler(404)
-    def not_found(request: Request, exc: HTTPException) -> HTMLResponse:
+    def not_found(request: Request, exc: HTTPException) -> Response:
+        if request.url.path.startswith("/api/"):
+            return Response(
+                content=json.dumps({"detail": str(exc.detail)}, ensure_ascii=False),
+                status_code=404,
+                media_type="application/json",
+            )
         return templates.TemplateResponse(
             request=request,
             name="error.html",
             context={
-                "request": request,
-                "title": "没有找到这个任务",
+                **base_context(request),
+                "title": "没有找到这个页面",
                 "message": str(exc.detail),
-                "app_title": EDITION_LABELS[app_edition],
-                "app_intro": EDITION_INTROS[app_edition],
-                "app_edition": app_edition,
             },
             status_code=404,
         )
 
     return app
-
-
-def parse_labels(raw_labels: str) -> list[str]:
-    return [
-        label.strip()
-        for label in raw_labels.replace("，", ",").split(",")
-        if label.strip()
-    ]
-
-
-HARDWARE_LABELS = {
-    "unihiker_m10": "行空板 M10 + DFRobot 开源硬件外设",
-    "student_laptop": "学生笔记本",
-    "jetson_nano": "NVIDIA Jetson Nano",
-    "raspberry_pi": "树莓派 / 行空板",
-    "esp32": "ESP32",
-    "generic": "其他硬件",
-}
 
 
 app = create_app(edition=os.environ.get("LDS_EDITION", "all"))
