@@ -1,3 +1,6 @@
+import math
+import struct
+import wave
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
@@ -15,6 +18,20 @@ def make_client(tmp_path: Path, edition: str | None = None) -> TestClient:
 def make_image_bytes(color: tuple[int, int, int]) -> bytes:
     buffer = BytesIO()
     Image.new("RGB", (48, 48), color).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def make_wav_bytes(frequency: float, duration: float = 0.5, rate: int = 16000) -> bytes:
+    buffer = BytesIO()
+    with wave.open(buffer, "wb") as writer:
+        writer.setnchannels(1)
+        writer.setsampwidth(2)
+        writer.setframerate(rate)
+        frames = bytearray()
+        for index in range(int(duration * rate)):
+            value = int(0.5 * 32767 * math.sin(2 * math.pi * frequency * index / rate))
+            frames += struct.pack("<h", value)
+        writer.writeframes(bytes(frames))
     return buffer.getvalue()
 
 
@@ -232,6 +249,54 @@ def test_image_project_upload_train_predict(tmp_path: Path) -> None:
     )
     assert predict.status_code == 200
     assert predict.json()["label"] == "红色卡片"
+
+
+def test_audio_project_upload_train_predict(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(
+        client, "general_ml", "general_audio_classifier", "声音流程"
+    )
+
+    for label, frequency in (("低音", 220.0), ("高音", 880.0)):
+        upload = client.post(
+            f"/api/projects/{project_id}/data/audio",
+            data={"label": label},
+            files=[
+                (
+                    "files",
+                    (f"{index}.wav", make_wav_bytes(frequency * (1 + 0.03 * index)), "audio/wav"),
+                )
+                for index in range(2)
+            ],
+        )
+        assert upload.status_code == 200
+
+    state = client.get(f"/api/projects/{project_id}/state").json()
+    assert state["dataset"]["class_counts"] == {"低音": 2, "高音": 2}
+
+    train = client.post(f"/api/projects/{project_id}/train")
+    assert train.status_code == 200
+
+    predict = client.post(
+        f"/api/projects/{project_id}/predict/audio",
+        files={"file": ("probe.wav", make_wav_bytes(900.0), "audio/wav")},
+    )
+    assert predict.status_code == 200
+    assert predict.json()["label"] == "高音"
+
+
+def test_audio_upload_rejects_non_wav(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(client, "general_ml", "general_audio_classifier", "格式校验")
+
+    upload = client.post(
+        f"/api/projects/{project_id}/data/audio",
+        data={"label": "低音"},
+        files=[("files", ("clip.mp3", b"fake-mp3", "audio/mpeg"))],
+    )
+
+    assert upload.status_code == 400
+    assert "WAV" in upload.json()["detail"]
 
 
 def test_export_without_training_returns_friendly_400(tmp_path: Path) -> None:

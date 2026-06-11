@@ -1,6 +1,9 @@
 import json
+import math
+import struct
 import subprocess
 import sys
+import wave
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
@@ -34,6 +37,20 @@ def make_project(
 def make_image_bytes(color: tuple[int, int, int]) -> bytes:
     buffer = BytesIO()
     Image.new("RGB", (48, 48), color).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def make_wav_bytes(frequency: float, duration: float = 0.5, rate: int = 16000) -> bytes:
+    buffer = BytesIO()
+    with wave.open(buffer, "wb") as writer:
+        writer.setnchannels(1)
+        writer.setsampwidth(2)
+        writer.setframerate(rate)
+        frames = bytearray()
+        for index in range(int(duration * rate)):
+            value = int(0.5 * 32767 * math.sin(2 * math.pi * frequency * index / rate))
+            frames += struct.pack("<h", value)
+        writer.writeframes(bytes(frames))
     return buffer.getvalue()
 
 
@@ -147,6 +164,69 @@ def test_export_sensor_project_keeps_student_columns_and_runs(tmp_path: Path) ->
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_export_audio_project_bundles_model_and_predicts(tmp_path: Path) -> None:
+    service, info = make_project(
+        tmp_path, "general_ml", "general_audio_classifier", "声音导出"
+    )
+    for label, frequency in (("低音", 220.0), ("高音", 880.0)):
+        service.add_audio_clips(
+            info,
+            label,
+            [
+                (f"{index}.wav", make_wav_bytes(frequency * (1 + 0.03 * index)))
+                for index in range(2)
+            ],
+        )
+    service.train(info, "audio_classifier")
+    task = get_task("general_ml", "general_audio_classifier")
+    assert task is not None
+
+    export_path, _ = ExportService().export_project(info, task, service)
+
+    with ZipFile(export_path) as archive:
+        names = set(archive.namelist())
+    assert "models/audio_classifier.joblib" in names
+    audio_files = [name for name in names if name.startswith("data_sample/audio/")]
+    assert len(audio_files) == 4
+
+    # The exported predict.py must load the in-app trained model (key invariant).
+    generated_dir = service.workspace(info).generated_dir
+    result = subprocess.run(
+        [sys.executable, "predict.py"],
+        cwd=generated_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    predictions = json.loads(
+        (generated_dir / "outputs" / "predictions.json").read_text(encoding="utf-8")
+    )
+    assert predictions
+    assert {entry["prediction"] for entry in predictions} <= {"低音", "高音"}
+
+
+def test_audio_template_trains_and_runs_on_sample_data(tmp_path: Path) -> None:
+    service, info = make_project(
+        tmp_path, "general_ml", "general_audio_classifier", "声音样例"
+    )
+    task = get_task("general_ml", "general_audio_classifier")
+    assert task is not None
+    ExportService().export_project(info, task, service)
+    generated_dir = service.workspace(info).generated_dir
+
+    result = subprocess.run(
+        [sys.executable, "run.py"],
+        cwd=generated_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert (generated_dir / "outputs" / "predictions.json").exists()
 
 
 def test_every_catalog_task_exports_required_outputs_without_training(tmp_path: Path) -> None:

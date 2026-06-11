@@ -1,10 +1,20 @@
+import math
+import struct
+import wave
 from io import BytesIO
 from pathlib import Path
 
 import pytest
 from PIL import Image
 
-from app.ml import image_classifier, ocr_checker, qa_retrieval, sensor_model, text_classifier
+from app.ml import (
+    audio_classifier,
+    image_classifier,
+    ocr_checker,
+    qa_retrieval,
+    sensor_model,
+    text_classifier,
+)
 from app.ml.base import MLDataError
 
 TEXT_SAMPLES = [
@@ -18,6 +28,20 @@ TEXT_SAMPLES = [
 def make_image_bytes(color: tuple[int, int, int]) -> bytes:
     buffer = BytesIO()
     Image.new("RGB", (48, 48), color).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def make_wav_bytes(frequency: float, duration: float = 0.5, rate: int = 16000) -> bytes:
+    buffer = BytesIO()
+    with wave.open(buffer, "wb") as writer:
+        writer.setnchannels(1)
+        writer.setsampwidth(2)
+        writer.setframerate(rate)
+        frames = bytearray()
+        for index in range(int(duration * rate)):
+            value = int(0.5 * 32767 * math.sin(2 * math.pi * frequency * index / rate))
+            frames += struct.pack("<h", value)
+        writer.writeframes(bytes(frames))
     return buffer.getvalue()
 
 
@@ -65,6 +89,42 @@ def test_image_classifier_trains_and_predicts(tmp_path: Path) -> None:
 def test_image_classifier_rejects_broken_image(tmp_path: Path) -> None:
     with pytest.raises(MLDataError, match="打不开"):
         image_classifier.train({"甲": [b"not an image"] * 2, "乙": [b"x"] * 2}, tmp_path)
+
+
+def test_audio_classifier_trains_and_predicts(tmp_path: Path) -> None:
+    labeled = {
+        "低音": [make_wav_bytes(220.0 * (1 + 0.03 * index)) for index in range(3)],
+        "高音": [make_wav_bytes(880.0 * (1 + 0.03 * index)) for index in range(3)],
+    }
+
+    report = audio_classifier.train(labeled, tmp_path)
+
+    assert report["capability"] == "audio_classifier"
+    assert report["class_counts"] == {"低音": 3, "高音": 3}
+
+    result = audio_classifier.predict(tmp_path, make_wav_bytes(900.0))
+    assert result["label"] == "高音"
+    assert set(result["scores"]) == {"低音", "高音"}
+
+
+def test_audio_classifier_rejects_broken_clip(tmp_path: Path) -> None:
+    with pytest.raises(MLDataError, match="打不开"):
+        audio_classifier.train({"甲": [b"not audio"] * 2, "乙": [b"x"] * 2}, tmp_path)
+
+
+def test_audio_classifier_rejects_thin_classes(tmp_path: Path) -> None:
+    labeled = {"低音": [make_wav_bytes(220.0)], "高音": [make_wav_bytes(880.0)]}
+    with pytest.raises(MLDataError, match="声音太少"):
+        audio_classifier.train(labeled, tmp_path)
+
+
+def test_audio_classifier_rejects_too_short_clip(tmp_path: Path) -> None:
+    labeled = {
+        "低音": [make_wav_bytes(220.0, duration=0.1)] * 2,
+        "高音": [make_wav_bytes(880.0)] * 2,
+    }
+    with pytest.raises(MLDataError, match="太短"):
+        audio_classifier.train(labeled, tmp_path)
 
 
 def test_qa_retrieval_returns_best_answer(tmp_path: Path) -> None:
