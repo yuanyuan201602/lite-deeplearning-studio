@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import shutil
 import subprocess
 import sys
@@ -16,10 +15,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.main import create_app  # noqa: E402
-from app.models import GenerationRequest, TaskDefinition  # noqa: E402
+from app.models import GenerationRequest, ProjectCreateRequest, TaskDefinition  # noqa: E402
 from app.services.export_service import ExportService  # noqa: E402
+from app.services.project_service import ProjectService  # noqa: E402
 from app.services.template_service import TemplateService  # noqa: E402
-from app.services.workspace_service import WorkspaceService  # noqa: E402
 from app.task_catalog import list_competitions  # noqa: E402
 
 if TYPE_CHECKING:
@@ -60,9 +59,6 @@ REQUIRED_EXPORT_FILES = {
     "speech/speech_output.py",
     "speech/voice_config.json",
 }
-
-DOWNLOAD_HREF_RE = re.compile(r'href="(?P<url>/exports/[^"]+\.zip)"')
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -141,7 +137,7 @@ def run_round(
     edition: str,
 ) -> list[str]:
     failures: list[str] = []
-    workspace_service = WorkspaceService(round_root)
+    project_service = ProjectService(round_root)
     template_service = TemplateService()
     export_service = ExportService()
 
@@ -158,7 +154,17 @@ def run_round(
                 dataset_notes="按照竞赛文件进行自动验收。",
                 class_labels=["类别A", "类别B", "类别C"],
             )
-            workspace = workspace_service.create_workspace(request)
+            info = project_service.create_project(
+                ProjectCreateRequest(
+                    competition_slug=competition.slug,
+                    task_slug=task.slug,
+                    project_name=request.project_name,
+                    student_name=request.student_name,
+                    target_hardware=task.suggested_hardware[0],
+                    dataset_notes=request.dataset_notes,
+                )
+            )
+            workspace = project_service.workspace(info)
             template_service.render_task_files(workspace, task, request)
             export_path = export_service.create_zip(workspace)
 
@@ -318,18 +324,16 @@ def run_web_task_check(
     competition_slug: str,
     task: TaskDefinition,
 ) -> list[str]:
+    prefix = f"{competition_slug}/{task.slug}"
     failures: list[str] = []
     workflow_response = client.get(f"/workflow/{competition_slug}/{task.slug}")
     if workflow_response.status_code != 200:
-        return [
-            f"{competition_slug}/{task.slug}: workflow returned "
-            f"{workflow_response.status_code}"
-        ]
+        return [f"{prefix}: workflow returned {workflow_response.status_code}"]
     if task.title not in workflow_response.text:
-        failures.append(f"{competition_slug}/{task.slug}: workflow missing task title")
+        failures.append(f"{prefix}: workflow missing task title")
 
-    generate_response = client.post(
-        "/generate",
+    create_response = client.post(
+        "/projects",
         data={
             "competition_slug": competition_slug,
             "task_slug": task.slug,
@@ -337,34 +341,128 @@ def run_web_task_check(
             "student_name": "验收学生",
             "target_hardware": task.suggested_hardware[0],
             "dataset_notes": "Web 入口验收。",
-            "class_labels": "类别A,类别B,类别C",
         },
+        follow_redirects=False,
     )
-    if generate_response.status_code != 200:
-        return [
-            f"{competition_slug}/{task.slug}: generate returned "
-            f"{generate_response.status_code}"
-        ]
+    if create_response.status_code != 303:
+        return [f"{prefix}: create project returned {create_response.status_code}"]
+    project_id = create_response.headers["location"].rsplit("/", 1)[-1]
 
-    download_url = find_download_url(generate_response.text)
-    if download_url is None:
-        return [f"{competition_slug}/{task.slug}: generated page missing zip download link"]
+    data_failures = upload_acceptance_data(client, project_id, task)
+    if data_failures:
+        return [f"{prefix}: {failure}" for failure in data_failures]
 
+    train_response = client.post(f"/api/projects/{project_id}/train")
+    if train_response.status_code != 200:
+        return [f"{prefix}: train returned {train_response.status_code} {train_response.text}"]
+
+    predict_failures = run_acceptance_predict(client, project_id, task)
+    failures.extend(f"{prefix}: {failure}" for failure in predict_failures)
+
+    export_response = client.post(f"/api/projects/{project_id}/export")
+    if export_response.status_code != 200:
+        return failures + [f"{prefix}: export returned {export_response.status_code}"]
+    download_url = export_response.json().get("download_url", "")
     download_response = client.get(download_url)
     if download_response.status_code != 200:
-        failures.append(
-            f"{competition_slug}/{task.slug}: download returned {download_response.status_code}"
-        )
-    if not download_response.content.startswith(b"PK"):
-        failures.append(f"{competition_slug}/{task.slug}: downloaded file is not a zip")
+        failures.append(f"{prefix}: download returned {download_response.status_code}")
+    elif not download_response.content.startswith(b"PK"):
+        failures.append(f"{prefix}: downloaded file is not a zip")
     return failures
 
 
-def find_download_url(html: str) -> str | None:
-    match = DOWNLOAD_HREF_RE.search(html)
-    if match is None:
-        return None
-    return match.group("url")
+def upload_acceptance_data(client: TestClient, project_id: str, task: TaskDefinition) -> list[str]:
+    kind = task.sample_dataset_kind
+    if kind == "text":
+        response = client.post(
+            f"/api/projects/{project_id}/data/text",
+            json={
+                "samples": [
+                    {"text": "昆曲 唱腔 舞台 表演", "label": "类别A"},
+                    {"text": "梨园戏 地方 戏曲 剧目", "label": "类别A"},
+                    {"text": "德化瓷 烧制 陶土 窑炉", "label": "类别B"},
+                    {"text": "蜡染 技艺 染布 图案", "label": "类别B"},
+                ]
+            },
+        )
+    elif kind == "qa":
+        response = client.post(
+            f"/api/projects/{project_id}/data/qa",
+            json={
+                "pairs": [
+                    {"question": "什么是非遗", "answer": "世代相传的传统文化。"},
+                    {"question": "为什么要保护非遗", "answer": "为了传承文化记忆。"},
+                    {"question": "AI能帮什么忙", "answer": "识别、整理和传播。"},
+                ]
+            },
+        )
+    elif kind == "sensor":
+        response = client.post(
+            f"/api/projects/{project_id}/data/sensor",
+            json={
+                "csv": (
+                    "temperature,distance,action\n"
+                    "38.6,12,提醒就诊\n36.5,30,继续观察\n"
+                    "39.2,8,提醒就诊\n37.0,45,继续观察\n38.1,14,提醒就诊\n"
+                )
+            },
+        )
+    elif kind == "ocr":
+        response = client.post(
+            f"/api/projects/{project_id}/data/ocr",
+            json={"correct_text": "保护为主抢救第一", "observed_sample": "保护为王抢救第一"},
+        )
+    else:
+        for label, color in (("类别A", (220, 60, 60)), ("类别B", (60, 170, 90))):
+            files = [
+                ("files", (f"{index}.png", make_test_image(color, index), "image/png"))
+                for index in range(2)
+            ]
+            response = client.post(
+                f"/api/projects/{project_id}/data/images",
+                data={"label": label},
+                files=files,
+            )
+            if response.status_code != 200:
+                break
+    if response.status_code != 200:
+        return [f"data upload returned {response.status_code} {response.text}"]
+    return []
+
+
+def run_acceptance_predict(client: TestClient, project_id: str, task: TaskDefinition) -> list[str]:
+    kind = task.sample_dataset_kind
+    if kind == "image":
+        response = client.post(
+            f"/api/projects/{project_id}/predict/image",
+            files={"file": ("probe.png", make_test_image((215, 65, 62), 0), "image/png")},
+        )
+    elif kind == "sensor":
+        response = client.post(
+            f"/api/projects/{project_id}/predict",
+            json={"values": {"temperature": "38.8", "distance": "10"}},
+        )
+    else:
+        probe = {"text": "昆曲 舞台" if kind == "text" else "什么是非遗"}
+        if kind == "ocr":
+            probe = {"text": "保护为王抢救第一"}
+        response = client.post(f"/api/projects/{project_id}/predict", json=probe)
+    if response.status_code != 200:
+        return [f"predict returned {response.status_code} {response.text}"]
+    if "label" not in response.json():
+        return ["predict response missing label"]
+    return []
+
+
+def make_test_image(color: tuple[int, int, int], variant: int) -> bytes:
+    from io import BytesIO
+
+    from PIL import Image
+
+    shifted = tuple(min(255, channel + variant * 6) for channel in color)
+    buffer = BytesIO()
+    Image.new("RGB", (48, 48), shifted).save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 def run_generated_script(

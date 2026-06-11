@@ -1,9 +1,9 @@
 import subprocess
 import sys
 
-from app.models import GenerationRequest
-from app.services.template_service import TemplateService
-from app.services.workspace_service import WorkspaceService
+from app.models import ProjectCreateRequest
+from app.services.export_service import ExportService
+from app.services.project_service import ProjectService
 from app.task_catalog import get_task, list_competitions
 
 
@@ -34,23 +34,24 @@ def test_future_creator_catalog_covers_group_requirements() -> None:
 
 
 def test_generated_checklist_mentions_pdf_submission_requirements(tmp_path) -> None:
-    request = GenerationRequest(
-        competition_slug="future_creator",
-        task_slug="senior_llm_vision_motion",
-        project_name="高中组验证",
-        student_name="学生D",
-        target_hardware="unihiker_m10",
-        dataset_notes="现场卡片和夹取任务。",
-        class_labels=["人脸", "二维码"],
+    service = ProjectService(tmp_path)
+    info = service.create_project(
+        ProjectCreateRequest(
+            competition_slug="future_creator",
+            task_slug="senior_llm_vision_motion",
+            project_name="高中组验证",
+            student_name="学生D",
+            dataset_notes="现场卡片和夹取任务。",
+        )
     )
-    task = get_task(request.competition_slug, request.task_slug)
+    task = get_task("future_creator", "senior_llm_vision_motion")
     assert task is not None
-    workspace = WorkspaceService(tmp_path).create_workspace(request)
 
-    TemplateService().render_task_files(workspace, task, request)
+    ExportService().export_project(info, task, service)
 
-    checklist = (workspace.generated_dir / "docs" / "competition_checklist.md").read_text()
-    submission = (workspace.generated_dir / "submission" / "README.md").read_text()
+    generated_dir = service.workspace(info).generated_dir
+    checklist = (generated_dir / "docs" / "competition_checklist.md").read_text()
+    submission = (generated_dir / "submission" / "README.md").read_text()
     assert "大模型" in checklist
     assert "机械装置" in checklist
     assert "AI 能力：image_classifier" in checklist

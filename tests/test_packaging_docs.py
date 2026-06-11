@@ -14,6 +14,7 @@ def test_repository_delivery_docs_exist_with_install_paths() -> None:
     required_docs = [
         "README.md",
         "docs/INSTALLATION.md",
+        "docs/DEPLOYMENT.md",
         "docs/GITHUB_RELEASE.md",
         "docs/TRAINING_INDEX.md",
         "docs/TRAINING_SMART_MUSEUM.md",
@@ -44,6 +45,9 @@ def test_repository_delivery_docs_exist_with_install_paths() -> None:
         "FutureCreator-Windows-Setup.zip",
         "一键安装.bat",
         "启动软件.bat",
+        "一键安装.command",
+        "启动软件.command",
+        "docker compose up -d --build",
         "HuskyLens",
         "语音合成模块",
     ]:
@@ -117,6 +121,8 @@ def test_student_installer_script_includes_platform_installers() -> None:
         "安装OCR增强.bat",
         "启动软件.bat",
         "卸载本地环境.bat",
+        "一键安装.command",
+        "启动软件.command",
         "create_desktop_shortcut.ps1",
         "install_windows.ps1",
         "start_windows.ps1",
