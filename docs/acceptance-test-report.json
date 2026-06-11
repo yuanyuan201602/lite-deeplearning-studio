@@ -7,24 +7,8 @@
     {
       "round": 1,
       "competition": "smart_museum",
-      "task": "heritage_text_classifier",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-tmahvyg4/round-1/projects/1-fd28494a/exports/1-fd28494a.zip",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": 1,
-      "competition": "smart_museum",
-      "task": "heritage_qa_helper",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-tmahvyg4/round-1/projects/1-4fa9d05e/exports/1-4fa9d05e.zip",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": 1,
-      "competition": "smart_museum",
       "task": "heritage_face_intro",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-tmahvyg4/round-1/projects/1-280bfbb6/exports/1-280bfbb6.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-9959f25e/exports/1-9959f25e.zip",
       "passed": true,
       "failures": []
     },
@@ -32,7 +16,15 @@
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_ocr_typo",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-tmahvyg4/round-1/projects/1-f429246d/exports/1-f429246d.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-30730483/exports/1-30730483.zip",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "round": 1,
+      "competition": "smart_museum",
+      "task": "heritage_text_classifier",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-2c6a78c4/exports/1-2c6a78c4.zip",
       "passed": true,
       "failures": []
     },
@@ -40,7 +32,15 @@
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_sentence_classifier",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-tmahvyg4/round-1/projects/1-2120f539/exports/1-2120f539.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-31b0d0ab/exports/1-31b0d0ab.zip",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "round": 1,
+      "competition": "smart_museum",
+      "task": "heritage_qa_helper",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-8fc94063/exports/1-8fc94063.zip",
       "passed": true,
       "failures": []
     },
@@ -48,7 +48,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "image_recognition_starter",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-tmahvyg4/round-1/projects/1-52720202/exports/1-52720202.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-ba1430fa/exports/1-ba1430fa.zip",
       "passed": true,
       "failures": []
     },
@@ -56,7 +56,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "sensor_decision_template",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-tmahvyg4/round-1/projects/1-3463d922/exports/1-3463d922.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-94281f4e/exports/1-94281f4e.zip",
       "passed": true,
       "failures": []
     },
@@ -64,7 +64,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "primary_voice_image_interaction",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-tmahvyg4/round-1/projects/1-70e0b146/exports/1-70e0b146.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-f0bd9980/exports/1-f0bd9980.zip",
       "passed": true,
       "failures": []
     },
@@ -72,7 +72,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "junior_model_calling_workflow",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-tmahvyg4/round-1/projects/1-ed6c5ce5/exports/1-ed6c5ce5.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-371963bf/exports/1-371963bf.zip",
       "passed": true,
       "failures": []
     },
@@ -80,7 +80,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "senior_llm_vision_motion",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-tmahvyg4/round-1/projects/1-304224b0/exports/1-304224b0.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-b421de00/exports/1-b421de00.zip",
       "passed": true,
       "failures": []
     },
@@ -108,20 +108,6 @@
     {
       "round": "web",
       "competition": "smart_museum",
-      "task": "heritage_text_classifier",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "smart_museum",
-      "task": "heritage_qa_helper",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "smart_museum",
       "task": "heritage_face_intro",
       "passed": true,
       "failures": []
@@ -136,7 +122,21 @@
     {
       "round": "web",
       "competition": "smart_museum",
+      "task": "heritage_text_classifier",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "round": "web",
+      "competition": "smart_museum",
       "task": "heritage_sentence_classifier",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "round": "web",
+      "competition": "smart_museum",
+      "task": "heritage_qa_helper",
       "passed": true,
       "failures": []
     },
