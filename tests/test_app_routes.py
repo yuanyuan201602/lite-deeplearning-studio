@@ -42,6 +42,73 @@ def test_homepage_shows_competitions_and_school(tmp_path: Path) -> None:
     assert "logo.svg" in response.text
 
 
+def test_homepage_shows_general_tasks_and_competition_entries(tmp_path: Path) -> None:
+    response = make_client(tmp_path).get("/")
+
+    assert "机器学习任务" in response.text
+    assert "图像分类" in response.text
+    assert "文本分类" in response.text
+    assert "智能问答" in response.text
+    assert "传感器决策" in response.text
+    assert "/competition/smart_museum" in response.text
+    assert "/competition/future_creator" in response.text
+
+
+def test_competition_page_lists_competition_tasks(tmp_path: Path) -> None:
+    response = make_client(tmp_path).get("/competition/smart_museum")
+
+    assert response.status_code == 200
+    assert "挑战三：非遗文化分类学览" in response.text
+    assert "挑战一：认识非遗传承匠人" in response.text
+
+
+def test_competition_page_respects_edition_and_hides_general(tmp_path: Path) -> None:
+    client = make_client(tmp_path, edition="smart_museum")
+
+    assert client.get("/competition/smart_museum").status_code == 200
+    assert client.get("/competition/future_creator").status_code == 404
+    assert client.get("/competition/general_ml").status_code == 404
+
+
+def test_general_task_available_in_every_edition(tmp_path: Path) -> None:
+    client = make_client(tmp_path, edition="smart_museum")
+
+    response = client.get("/workflow/general_ml/general_text_classifier")
+
+    assert response.status_code == 200
+    assert "文本分类" in response.text
+
+
+def test_general_task_project_full_flow(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(
+        client, "general_ml", "general_text_classifier", "通用文本练习"
+    )
+
+    save = client.post(
+        f"/api/projects/{project_id}/data/text",
+        json={
+            "samples": [
+                {"text": "晴天 出门 散步", "label": "好天气"},
+                {"text": "阳光 温暖 舒适", "label": "好天气"},
+                {"text": "暴雨 打雷 进屋", "label": "坏天气"},
+                {"text": "大风 降温 添衣", "label": "坏天气"},
+            ]
+        },
+    )
+    assert save.status_code == 200
+
+    train = client.post(f"/api/projects/{project_id}/train")
+    assert train.status_code == 200
+
+    predict = client.post(f"/api/projects/{project_id}/predict", json={"text": "晴天 散步"})
+    assert predict.status_code == 200
+    assert predict.json()["label"] == "好天气"
+
+    page = client.get("/")
+    assert "通用文本练习" in page.text
+
+
 def test_smart_museum_edition_only_shows_smart_museum(tmp_path: Path) -> None:
     client = make_client(tmp_path, edition="smart_museum")
 
@@ -68,7 +135,7 @@ def test_workflow_page_shows_create_form(tmp_path: Path) -> None:
     response = make_client(tmp_path).get("/workflow/smart_museum/heritage_text_classifier")
 
     assert response.status_code == 200
-    assert "非遗词语分类工作流" in response.text
+    assert "挑战三：非遗文化分类学览" in response.text
     assert "创建项目" in response.text
 
 
@@ -165,6 +232,54 @@ def test_image_project_upload_train_predict(tmp_path: Path) -> None:
     )
     assert predict.status_code == 200
     assert predict.json()["label"] == "红色卡片"
+
+
+def test_export_without_training_returns_friendly_400(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(client, "smart_museum", "heritage_text_classifier", "未训练导出")
+
+    response = client.post(f"/api/projects/{project_id}/export")
+
+    assert response.status_code == 400
+    assert "训练模型" in response.json()["detail"]
+
+
+def test_sensor_save_accepts_fullwidth_commas_and_validates_early(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(
+        client, "future_creator", "sensor_decision_template", "传感器校验"
+    )
+
+    fullwidth = client.post(
+        f"/api/projects/{project_id}/data/sensor",
+        json={
+            "csv": "体温，距离，动作\n38.6，12，提醒\n36.7，45，观察\n37.8，20，提醒\n36.5，60，观察"
+        },
+    )
+    assert fullwidth.status_code == 200
+
+    train = client.post(f"/api/projects/{project_id}/train")
+    assert train.status_code == 200
+
+    header_only = client.post(
+        f"/api/projects/{project_id}/data/sensor",
+        json={"csv": "体温,距离,动作"},
+    )
+    assert header_only.status_code == 400
+    assert "数据太少" in header_only.json()["detail"]
+
+
+def test_create_project_with_spaces_only_name_returns_422(tmp_path: Path) -> None:
+    response = make_client(tmp_path).post(
+        "/projects",
+        data={
+            "competition_slug": "smart_museum",
+            "task_slug": "heritage_text_classifier",
+            "project_name": "   ",
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_train_without_data_returns_friendly_400(tmp_path: Path) -> None:

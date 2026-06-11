@@ -96,6 +96,21 @@ def test_qa_retrieval_falls_back_when_unrelated(tmp_path: Path) -> None:
     assert result["label"] == qa_retrieval.FALLBACK_ANSWER
 
 
+def test_qa_retrieval_ignores_shared_interrogative_words(tmp_path: Path) -> None:
+    pairs = [
+        {"question": "什么是非遗", "answer": "世代相传的传统文化。"},
+        {"question": "为什么要保护非遗", "answer": "为了传承文化记忆。"},
+        {"question": "怎么参加比赛", "answer": "按照竞赛文件报名。"},
+    ]
+    qa_retrieval.train(pairs, tmp_path)
+
+    # "什么" alone must not make an unrelated question look like a match.
+    result = qa_retrieval.predict(tmp_path, "今天午饭吃什么")
+
+    assert result["confident"] is False
+    assert result["label"] == qa_retrieval.FALLBACK_ANSWER
+
+
 def test_sensor_model_uses_student_columns(tmp_path: Path) -> None:
     raw_csv = (
         "心率,体温,动作\n"
@@ -107,6 +122,19 @@ def test_sensor_model_uses_student_columns(tmp_path: Path) -> None:
     assert report["feature_names"] == ["心率", "体温"]
     assert "体温" in report["rules_text"]
 
+    result = sensor_model.predict(tmp_path, {"心率": "120", "体温": "39.0"})
+    assert result["label"] == "提醒就诊"
+
+
+def test_sensor_model_accepts_fullwidth_commas(tmp_path: Path) -> None:
+    raw_csv = (
+        "心率，体温，动作\n"
+        "110，38.6，提醒就诊\n72，36.5，继续观察\n118，39.2，提醒就诊\n68，36.8，继续观察\n"
+    )
+
+    report = sensor_model.train(raw_csv, tmp_path)
+
+    assert report["feature_names"] == ["心率", "体温"]
     result = sensor_model.predict(tmp_path, {"心率": "120", "体温": "39.0"})
     assert result["label"] == "提醒就诊"
 

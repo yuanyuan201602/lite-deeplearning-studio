@@ -20,7 +20,7 @@ def test_each_competition_has_student_tasks() -> None:
 def test_get_task_returns_task_with_export_files() -> None:
     task = get_task("smart_museum", "heritage_text_classifier")
 
-    assert task.title == "非遗词语分类工作流"
+    assert task.title == "挑战三：非遗文化分类学览"
     assert "README.md" in task.required_outputs
     assert "notebook.ipynb" in task.required_outputs
 
