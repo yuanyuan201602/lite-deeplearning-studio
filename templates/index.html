@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}{{ app_title }} · 首页{% endblock %}
+{% block title %}{{ app_title }} · 工作台{% endblock %}
 
 {% block content %}
   <section class="hero">
     <div class="hero-text">
-      <p class="eyebrow">K12 学生机器学习工作台</p>
+      <p class="eyebrow">✻ K12 机器学习工作台</p>
       <h1>{{ app_intro }}</h1>
       <p class="hero-copy">
         四步完成一个 AI 项目：<strong>准备数据 → 训练模型 → 测试效果 → 导出材料</strong>。
@@ -20,14 +20,51 @@
     </ol>
   </section>
 
+  <section class="workbench-section">
+    <div class="section-heading">
+      <h2>机器学习任务</h2>
+      <p>不挂竞赛的基础练习，熟悉每一种模型怎么训练、怎么用。</p>
+    </div>
+    <div class="skill-grid">
+      {% for task in general_tasks %}
+        <a class="skill-card" href="/workflow/general_ml/{{ task.slug }}">
+          <span class="skill-mark">✻</span>
+          <h3>{{ task.title }}</h3>
+          <p>{{ task.summary }}</p>
+          <span class="task-action">开始练习</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="workbench-section">
+    <div class="section-heading">
+      <h2>竞赛专区</h2>
+      <p>按竞赛要求组织的任务，导出包自带提交清单和硬件部署说明。</p>
+    </div>
+    <div class="competition-grid">
+      {% for competition in competitions %}
+        <a class="competition-card" href="/competition/{{ competition.slug }}">
+          <p class="eyebrow">学生 AI 竞赛</p>
+          <h3>{{ competition.title }}</h3>
+          <p class="competition-copy">{{ competition.summary }}</p>
+          <span class="competition-meta">{{ competition.tasks | length }} 个任务 · 进入竞赛</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
   {% if recent_projects %}
-    <section class="recent">
-      <h2>继续我的项目</h2>
+    <section class="workbench-section recent">
+      <div class="section-heading">
+        <h2>继续我的项目</h2>
+      </div>
       <div class="recent-grid">
         {% for project in recent_projects %}
           <a class="recent-card" href="/project/{{ project.project_id }}">
             <h3>{{ project.project_name }}</h3>
-            <p>
+            <p>{{ task_title(project.competition_slug, project.task_slug) }}</p>
+            <p class="recent-status">
               {% if project.train_report %}已训练{% else %}未训练{% endif %}
               {% if project.export_file %} · 已导出{% endif %}
             </p>
@@ -37,25 +74,4 @@
       </div>
     </section>
   {% endif %}
-
-  <section class="competition-list">
-    {% for competition in competitions %}
-      <article class="competition">
-        <div class="competition-heading">
-          <h2>{{ competition.title }}</h2>
-          <p>{{ competition.summary }}</p>
-        </div>
-        <div class="task-grid">
-          {% for task in competition.tasks %}
-            <a class="task-card" href="/workflow/{{ competition.slug }}/{{ task.slug }}">
-              <span class="task-label">{{ task.group }}</span>
-              <h3>{{ task.title }}</h3>
-              <p>{{ task.summary }}</p>
-              <span class="task-action">开始项目</span>
-            </a>
-          {% endfor %}
-        </div>
-      </article>
-    {% endfor %}
-  </section>
 {% endblock %}

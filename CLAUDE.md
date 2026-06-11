@@ -42,12 +42,15 @@ docker compose up -d --build
 ## Architecture
 
 ```
-app/main.py               App factory (create_app). HTML routes: /, /workflow, /projects (form POST),
+app/main.py               App factory (create_app). HTML routes: / (workbench: general ML tasks +
+                          competition entries), /competition/{slug}, /workflow, /projects (form POST),
                           /project/{id}, /exports. Mounts the JSON API router.
 app/api.py                JSON API under /api/projects/{id}: state, data/{text,qa,sensor,ocr,images},
                           train, predict, predict/image, export. MLDataError → 400 with Chinese detail.
 app/models.py             Pydantic models and Literal types (TaskDefinition, ProjectInfo, GenerationRequest).
 app/task_catalog.py       Static catalog of all tasks; list_competitions / get_task helpers.
+                          GENERAL_ML ("general_ml") holds non-competition practice tasks for the
+                          workbench homepage; it bypasses edition filtering and has no /competition page.
 app/ml/                   In-app ML engine, one module per ai_capability:
                           text_classifier, image_classifier, qa_retrieval, sensor_model, ocr_checker.
                           engine.py dispatches by capability; base.py has MLDataError + model meta I/O.

@@ -4,20 +4,20 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}{{ app_title | default("Lite DeepLearning Studio") }}{% endblock %}</title>
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='/logo.svg') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='/logo.svg') }}?v={{ asset_version }}" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}?v={{ asset_version }}" />
   </head>
   <body>
     <header class="topbar">
       <a class="brand" href="/">
-        <img class="brand-logo" src="{{ url_for('static', path='/logo.svg') }}" alt="校徽" />
+        <img class="brand-logo" src="{{ url_for('static', path='/logo.svg') }}?v={{ asset_version }}" alt="校徽" />
         <span class="brand-text">
           <span class="brand-school">{{ school_name }}</span>
           <span class="brand-title">{{ app_title | default("Lite DeepLearning Studio") }}</span>
         </span>
       </a>
       <nav class="topnav">
-        <a href="/">首页</a>
+        <a href="/">工作台</a>
       </nav>
     </header>
     <main class="page">

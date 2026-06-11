@@ -3,7 +3,11 @@
 {% block title %}{{ task.title }} · {{ app_title }}{% endblock %}
 
 {% block content %}
-  <nav class="crumbs"><a href="/">首页</a> / {{ competition.title }} / {{ task.title }}</nav>
+  <nav class="crumbs">
+    <a href="/">工作台</a> /
+    {% if competition.slug == "general_ml" %}{{ competition.title }}{% else %}<a href="/competition/{{ competition.slug }}">{{ competition.title }}</a>{% endif %}
+    / {{ task.title }}
+  </nav>
 
   <section class="task-intro">
     <div>
@@ -13,7 +17,7 @@
       <p class="intro-goal">{{ task.student_goal }}</p>
     </div>
     <aside class="req-card">
-      <h2>比赛要求（{{ task.requirement_source }}）</h2>
+      <h2>{% if competition.slug == "general_ml" %}练习目标{% else %}比赛要求（{{ task.requirement_source }}）{% endif %}</h2>
       <ul>
         {% for requirement in task.competition_requirements %}
           <li>{{ requirement }}</li>
@@ -42,8 +46,9 @@
       <label>
         目标硬件
         <select name="target_hardware">
+          {% set default_hardware = task.suggested_hardware[0] if task.suggested_hardware else "unihiker_m10" %}
           {% for value, label in hardware_labels.items() %}
-            <option value="{{ value }}" {% if value == "unihiker_m10" %}selected{% endif %}>{{ label }}</option>
+            <option value="{{ value }}" {% if value == default_hardware %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </label>

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}{{ competition.title }} · {{ app_title }}{% endblock %}
+
+{% block content %}
+  <nav class="crumbs"><a href="/">工作台</a> / {{ competition.title }}</nav>
+
+  <section class="competition-head">
+    <p class="eyebrow">✻ 学生 AI 竞赛</p>
+    <h1>{{ competition.title }}</h1>
+    <p class="intro-copy">{{ competition.summary }}</p>
+  </section>
+
+  <section class="workbench-section">
+    <div class="section-heading">
+      <h2>竞赛任务</h2>
+      <p>选择一个任务创建项目，四步完成训练并导出比赛材料包。</p>
+    </div>
+    <div class="task-grid">
+      {% for task in competition.tasks %}
+        <a class="task-card" href="/workflow/{{ competition.slug }}/{{ task.slug }}">
+          <span class="task-label">{{ task.group }}</span>
+          <h3>{{ task.title }}</h3>
+          <p>{{ task.summary }}</p>
+          <span class="task-action">开始项目</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if competition_projects %}
+    <section class="workbench-section recent">
+      <div class="section-heading">
+        <h2>{{ competition.title }}的项目</h2>
+      </div>
+      <div class="recent-grid">
+        {% for project in competition_projects %}
+          <a class="recent-card" href="/project/{{ project.project_id }}">
+            <h3>{{ project.project_name }}</h3>
+            <p>{{ task_title(project.competition_slug, project.task_slug) }}</p>
+            <p class="recent-status">
+              {% if project.train_report %}已训练{% else %}未训练{% endif %}
+              {% if project.export_file %} · 已导出{% endif %}
+            </p>
+            <span class="recent-time">{{ project.updated_at | replace("T", " ") }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

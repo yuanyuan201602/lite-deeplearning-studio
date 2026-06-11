@@ -3,7 +3,11 @@
 {% block title %}{{ info.project_name }} · {{ app_title }}{% endblock %}
 
 {% block content %}
-  <nav class="crumbs"><a href="/">首页</a> / {{ competition.title }} / {{ info.project_name }}</nav>
+  <nav class="crumbs">
+    <a href="/">工作台</a> /
+    {% if competition.slug == "general_ml" %}{{ competition.title }}{% else %}<a href="/competition/{{ competition.slug }}">{{ competition.title }}</a>{% endif %}
+    / {{ info.project_name }}
+  </nav>
 
   <section class="project-head">
     <div>
@@ -72,5 +76,5 @@
   </section>
 
   <script id="initial-state" type="application/json">{{ initial_state_json | safe }}</script>
-  <script src="{{ url_for('static', path='/app.js') }}"></script>
+  <script src="{{ url_for('static', path='/app.js') }}?v={{ asset_version }}"></script>
 {% endblock %}

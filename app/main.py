@@ -14,12 +14,21 @@ from app.api import create_api_router, register_ml_error_handler
 from app.models import AppEdition, ProjectCreateRequest
 from app.services.export_service import ExportService
 from app.services.project_service import ProjectService
-from app.task_catalog import get_competition, get_task, list_competitions, normalize_edition
+from app.task_catalog import (
+    GENERAL_ML,
+    get_competition,
+    get_task,
+    list_competitions,
+    normalize_edition,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_WORKSPACE_ROOT = PROJECT_ROOT / "workspace"
 
 SCHOOL_NAME = "南昌市第二十三中学"
+
+# Bumping this busts browser caches for styles.css/logo.svg after an upgrade.
+ASSET_VERSION = "0.3.0"
 
 EDITION_LABELS = {
     "all": "Lite DeepLearning Studio",
@@ -70,25 +79,53 @@ def create_app(
             "app_intro": EDITION_INTROS[app_edition],
             "app_edition": app_edition,
             "school_name": SCHOOL_NAME,
+            "asset_version": ASSET_VERSION,
         }
 
     def visible_projects() -> list:
         visible_slugs = {competition.slug for competition in list_competitions(app_edition)}
+        visible_slugs.add(GENERAL_ML.slug)
         return [
             info
             for info in project_service.list_projects()
             if info.competition_slug in visible_slugs
         ]
 
+    def task_title(competition_slug: str, task_slug: str) -> str:
+        task = get_task(competition_slug, task_slug, app_edition)
+        return task.title if task else task_slug
+
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request) -> HTMLResponse:
+        projects = visible_projects()
         return templates.TemplateResponse(
             request=request,
             name="index.html",
             context={
                 **base_context(request),
+                "general_tasks": GENERAL_ML.tasks,
                 "competitions": list_competitions(app_edition),
-                "recent_projects": visible_projects()[:6],
+                "recent_projects": projects[:8],
+                "task_title": task_title,
+            },
+        )
+
+    @app.get("/competition/{competition_slug}", response_class=HTMLResponse)
+    def competition_page(request: Request, competition_slug: str) -> HTMLResponse:
+        competition = get_competition(competition_slug, app_edition)
+        if competition is None or competition.slug == GENERAL_ML.slug:
+            raise HTTPException(status_code=404, detail="没有找到这个竞赛")
+        projects = [
+            info for info in visible_projects() if info.competition_slug == competition.slug
+        ]
+        return templates.TemplateResponse(
+            request=request,
+            name="competition.html",
+            context={
+                **base_context(request),
+                "competition": competition,
+                "competition_projects": projects,
+                "task_title": task_title,
             },
         )
 
