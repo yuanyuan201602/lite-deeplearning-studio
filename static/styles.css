@@ -860,6 +860,35 @@ h2 {
   margin: 12px 0;
 }
 
+.btn-secondary.recording {
+  background: var(--warning);
+  color: #fff;
+  animation: recording-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+  50% {
+    opacity: 0.75;
+  }
+}
+
+#test-area audio {
+  display: block;
+  margin: 12px 0;
+}
+
+.detect-canvas {
+  display: block;
+  max-width: 100%;
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.detect-canvas[hidden] {
+  display: none;
+}
+
 #test-area input[type="file"] {
   display: block;
   margin-bottom: 8px;

@@ -68,6 +68,106 @@ function scoreBars(scores) {
   return wrap;
 }
 
+/* ---------- audio recording (WAV) ---------- */
+
+function writeWavString(view, offset, text) {
+  for (let i = 0; i < text.length; i += 1) {
+    view.setUint8(offset + i, text.charCodeAt(i));
+  }
+}
+
+function encodeWav(samples, sampleRate) {
+  const view = new DataView(new ArrayBuffer(44 + samples.length * 2));
+  writeWavString(view, 0, "RIFF");
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeWavString(view, 8, "WAVE");
+  writeWavString(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeWavString(view, 36, "data");
+  view.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i += 1) {
+    const sample = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(44 + i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+  }
+  return new Blob([view], { type: "audio/wav" });
+}
+
+function createWavRecorder() {
+  let mediaStream = null;
+  let audioContext = null;
+  let source = null;
+  let processor = null;
+  let chunks = [];
+
+  async function start() {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    source = audioContext.createMediaStreamSource(mediaStream);
+    processor = audioContext.createScriptProcessor(4096, 1, 1);
+    chunks = [];
+    processor.onaudioprocess = (event) => {
+      chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+    };
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+  }
+
+  function stop() {
+    if (!audioContext) return null;
+    processor.disconnect();
+    source.disconnect();
+    mediaStream.getTracks().forEach((track) => track.stop());
+    const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const merged = new Float32Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
+    const blob = encodeWav(merged, audioContext.sampleRate);
+    audioContext.close();
+    audioContext = null;
+    return blob;
+  }
+
+  return { start, stop };
+}
+
+const MIC_ERROR_MESSAGE = "无法使用麦克风：请允许浏览器使用麦克风，或改用上传 WAV 文件。";
+
+function recorderButton(idleText, onClip, onError) {
+  const button = el("button", "btn-secondary", idleText);
+  button.type = "button";
+  let recorder = null;
+  button.addEventListener("click", async () => {
+    if (recorder) {
+      const blob = recorder.stop();
+      recorder = null;
+      button.textContent = idleText;
+      button.classList.remove("recording");
+      if (blob) onClip(blob);
+      return;
+    }
+    try {
+      const next = createWavRecorder();
+      await next.start();
+      recorder = next;
+      button.textContent = "■ 停止录音";
+      button.classList.add("recording");
+    } catch (error) {
+      recorder = null;
+      onError(MIC_ERROR_MESSAGE);
+    }
+  });
+  return button;
+}
+
 /* ---------- stepper ---------- */
 
 const stepButtons = Array.from(document.querySelectorAll("#stepper .step"));
@@ -318,6 +418,127 @@ function buildImageEditor() {
   renderImageClasses();
 }
 
+function buildAudioEditor() {
+  dataHint.textContent =
+    "给每个类别起名字，用「录一段声音」按钮录音（录完自动保存），每类至少 2 段。也可以上传 WAV 文件。";
+  saveButton.hidden = true;
+  const container = el("div", "class-list");
+  dataEditor.appendChild(container);
+
+  function renderAudioClasses() {
+    container.innerHTML = "";
+    const counts = state.dataset.class_counts || {};
+    for (const [label, count] of Object.entries(counts)) {
+      container.appendChild(audioClassBlock(label, count));
+    }
+  }
+
+  function audioClassBlock(label, count) {
+    const block = el("div", "class-block");
+    const head = el("div", "class-head");
+    head.appendChild(el("strong", "", label));
+    head.appendChild(el("span", "img-count", `${count} 段声音`));
+    const removeButton = el("button", "btn-ghost", "删除类别");
+    removeButton.type = "button";
+    removeButton.addEventListener("click", async () => {
+      try {
+        const next = await postJson("/data/audio/remove", { label });
+        Object.assign(state, next);
+        renderAudioClasses();
+        afterDataSaved("已删除类别。");
+      } catch (error) {
+        setStatus("data-status", error.message, true);
+      }
+    });
+    head.appendChild(removeButton);
+    block.appendChild(head);
+    block.appendChild(audioUploadRow(label));
+    return block;
+  }
+
+  function audioUploadRow(label) {
+    const row = el("div", "upload-row");
+    const record = recorderButton(
+      "🎙 录一段声音",
+      (blob) => uploadAudio(label, [blob]),
+      (message) => setStatus("data-status", message, true)
+    );
+    const fileInput = el("input");
+    fileInput.type = "file";
+    fileInput.multiple = true;
+    fileInput.accept = ".wav,audio/wav";
+    const uploadButton = el("button", "btn-secondary", "上传到这个类别");
+    uploadButton.type = "button";
+    uploadButton.addEventListener("click", () => {
+      if (!fileInput.files.length) {
+        setStatus("data-status", "请先选择 WAV 文件。", true);
+        return;
+      }
+      uploadAudio(label, Array.from(fileInput.files));
+      fileInput.value = "";
+    });
+    row.append(record, fileInput, uploadButton);
+    return row;
+  }
+
+  async function uploadAudio(label, clips) {
+    const form = new FormData();
+    form.append("label", label);
+    for (const clip of clips) form.append("files", clip, clip.name || "clip.wav");
+    try {
+      const next = await api("/data/audio", { method: "POST", body: form });
+      Object.assign(state, next);
+      renderAudioClasses();
+      afterDataSaved(`已保存 ${next.saved} 段声音。`);
+    } catch (error) {
+      setStatus("data-status", error.message, true);
+    }
+  }
+
+  const newRow = el("div", "new-class-row");
+  const newLabel = el("input", "class-label-input");
+  newLabel.placeholder = "新类别名称，例如：拍手声";
+  newLabel.maxLength = 40;
+  const newRecord = recorderButton(
+    "🎙 录音并添加类别",
+    (blob) => {
+      const label = newLabel.value.trim();
+      if (!label) {
+        setStatus("data-status", "请先填写类别名称。", true);
+        return;
+      }
+      uploadAudio(label, [blob]).then(() => {
+        newLabel.value = "";
+      });
+    },
+    (message) => setStatus("data-status", message, true)
+  );
+  const newFiles = el("input");
+  newFiles.type = "file";
+  newFiles.multiple = true;
+  newFiles.accept = ".wav,audio/wav";
+  const addButton = el("button", "btn-secondary", "添加类别并上传");
+  addButton.type = "button";
+  addButton.addEventListener("click", async () => {
+    const label = newLabel.value.trim();
+    if (!label) {
+      setStatus("data-status", "请先填写类别名称。", true);
+      return;
+    }
+    if (!newFiles.files.length) {
+      setStatus("data-status", "请先选择 WAV 文件，或用录音按钮。", true);
+      return;
+    }
+    await uploadAudio(label, Array.from(newFiles.files));
+    newLabel.value = "";
+    newFiles.value = "";
+  });
+  newRow.append(newLabel, newRecord, newFiles, addButton);
+  dataEditor.appendChild(newRow);
+
+  renderAudioClasses();
+}
+
 async function saveData(action) {
   try {
     const next = await action();
@@ -510,6 +731,47 @@ function buildImageTest() {
   testArea.append(fileInput, preview, button);
 }
 
+function buildAudioTest() {
+  let pendingClip = null;
+  const preview = el("audio");
+  preview.controls = true;
+  preview.hidden = true;
+
+  function setClip(blob) {
+    pendingClip = blob;
+    preview.src = URL.createObjectURL(blob);
+    preview.hidden = false;
+  }
+
+  const record = recorderButton("🎙 录一段新声音", setClip, renderPredictError);
+  const fileInput = el("input");
+  fileInput.type = "file";
+  fileInput.accept = ".wav,audio/wav";
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) setClip(fileInput.files[0]);
+  });
+
+  const button = el("button", "btn-primary", "听听是哪一类");
+  button.type = "button";
+  button.addEventListener("click", async () => {
+    if (!pendingClip) {
+      renderPredictError("请先录一段声音，或选择一个 WAV 文件。");
+      return;
+    }
+    const form = new FormData();
+    form.append("file", pendingClip, pendingClip.name || "probe.wav");
+    try {
+      const result = await api("/predict/audio", { method: "POST", body: form });
+      renderPredictResult(result);
+      stepsDone[2] = true;
+      refreshChecks();
+    } catch (error) {
+      renderPredictError(error.message);
+    }
+  });
+  testArea.append(record, fileInput, preview, button);
+}
+
 function renderPredictError(message) {
   testResult.innerHTML = "";
   testResult.appendChild(el("p", "form-error", message));
@@ -582,6 +844,7 @@ const editors = {
   sensor: buildSensorEditor,
   ocr: buildOcrEditor,
   image: buildImageEditor,
+  audio: buildAudioEditor,
 };
 editors[kind]();
 
@@ -591,6 +854,7 @@ const testBuilders = {
   ocr: () => buildTextTest("粘贴拍照识别出来的文字，模型会找出错别字。", "开始查错"),
   sensor: buildSensorTest,
   image: buildImageTest,
+  audio: buildAudioTest,
 };
 testBuilders[kind]();
 

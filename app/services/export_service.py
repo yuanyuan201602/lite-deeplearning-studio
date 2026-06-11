@@ -32,8 +32,13 @@ class ExportService:
             if task.sample_dataset_kind == "image"
             else None
         )
+        user_audio = (
+            project_service.audio_folders(info.project_id)
+            if task.sample_dataset_kind == "audio"
+            else None
+        )
         generated_files = self.template_service.render_task_files(
-            workspace, task, request, user_images or None
+            workspace, task, request, user_images or None, user_audio or None
         )
         generated_files.extend(self._bundle_trained_model(info, task, project_service, workspace))
 
@@ -67,6 +72,8 @@ class ExportService:
             )
         elif task.sample_dataset_kind == "image":
             class_labels = sorted(project_service.image_folders(project_id))
+        elif task.sample_dataset_kind == "audio":
+            class_labels = sorted(project_service.audio_folders(project_id))
 
         ocr_payload = project_service.load_ocr_payload(project_id)
         return GenerationRequest(

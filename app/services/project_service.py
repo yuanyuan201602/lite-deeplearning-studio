@@ -14,7 +14,9 @@ from app.models import ProjectCreateRequest, ProjectInfo, ProjectWorkspace
 
 SAFE_NAME_PATTERN = re.compile(r"[^a-zA-Z0-9_-]+")
 SAFE_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
+SAFE_AUDIO_SUFFIXES = {".wav"}
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_AUDIO_BYTES = 10 * 1024 * 1024
 
 
 class ProjectService:
@@ -131,14 +133,41 @@ class ProjectService:
         return saved
 
     def remove_image_label(self, info: ProjectInfo, label: str) -> None:
-        labels_path = self.dataset_dir(info.project_id) / engine.IMAGE_LABELS_FILE
+        self._remove_media_label(info, label, engine.IMAGE_LABELS_FILE, engine.IMAGES_DIR)
+
+    def add_audio_clips(self, info: ProjectInfo, label: str, clips: list[tuple[str, bytes]]) -> int:
+        label = label.strip()
+        if not label:
+            raise MLDataError("请先填写这组声音的类别名称。")
+        saved = 0
+        folder = self._media_folder(
+            info.project_id, label, True, engine.AUDIO_LABELS_FILE, engine.AUDIO_DIR
+        )
+        for filename, data in clips:
+            suffix = Path(filename).suffix.lower()
+            if suffix not in SAFE_AUDIO_SUFFIXES:
+                raise MLDataError(f"不支持的声音格式：{filename}。请上传 WAV 录音。")
+            if len(data) > MAX_AUDIO_BYTES:
+                raise MLDataError(f"声音文件太大：{filename}。请使用 10MB 以内的录音。")
+            (folder / f"{uuid4().hex[:12]}{suffix}").write_bytes(data)
+            saved += 1
+        self._touch(info)
+        return saved
+
+    def remove_audio_label(self, info: ProjectInfo, label: str) -> None:
+        self._remove_media_label(info, label, engine.AUDIO_LABELS_FILE, engine.AUDIO_DIR)
+
+    def _remove_media_label(
+        self, info: ProjectInfo, label: str, labels_file: str, media_dir: str
+    ) -> None:
+        labels_path = self.dataset_dir(info.project_id) / labels_file
         if not labels_path.is_file():
             return
         label_map: dict[str, str] = json.loads(labels_path.read_text(encoding="utf-8"))
         for folder_name, existing_label in list(label_map.items()):
             if existing_label == label:
                 shutil.rmtree(
-                    self.dataset_dir(info.project_id) / engine.IMAGES_DIR / folder_name,
+                    self.dataset_dir(info.project_id) / media_dir / folder_name,
                     ignore_errors=True,
                 )
                 del label_map[folder_name]
@@ -195,6 +224,16 @@ class ProjectService:
                 "sample_count": sum(class_counts.values()),
                 "class_counts": class_counts,
             }
+        if dataset_kind == "audio":
+            class_counts = {
+                label: len([path for path in folder.glob("*") if path.is_file()])
+                for label, folder in self.audio_folders(info.project_id).items()
+            }
+            return {
+                "kind": "audio",
+                "sample_count": sum(class_counts.values()),
+                "class_counts": class_counts,
+            }
         return {"kind": dataset_kind, "sample_count": 0}
 
     def load_text_samples(self, project_id: str) -> list[dict[str, str]]:
@@ -212,12 +251,19 @@ class ProjectService:
 
     def image_folders(self, project_id: str) -> dict[str, Path]:
         """Map of class label -> folder of uploaded images."""
-        labels_path = self.dataset_dir(project_id) / engine.IMAGE_LABELS_FILE
+        return self._media_folders(project_id, engine.IMAGE_LABELS_FILE, engine.IMAGES_DIR)
+
+    def audio_folders(self, project_id: str) -> dict[str, Path]:
+        """Map of class label -> folder of uploaded audio clips."""
+        return self._media_folders(project_id, engine.AUDIO_LABELS_FILE, engine.AUDIO_DIR)
+
+    def _media_folders(self, project_id: str, labels_file: str, media_dir: str) -> dict[str, Path]:
+        labels_path = self.dataset_dir(project_id) / labels_file
         if not labels_path.is_file():
             return {}
         label_map: dict[str, str] = json.loads(labels_path.read_text(encoding="utf-8"))
         return {
-            label: self.dataset_dir(project_id) / engine.IMAGES_DIR / folder_name
+            label: self.dataset_dir(project_id) / media_dir / folder_name
             for folder_name, label in label_map.items()
         }
 
@@ -243,24 +289,31 @@ class ProjectService:
     # ----- helpers -----
 
     def _image_folder(self, project_id: str, label: str, create: bool) -> Path:
-        labels_path = self.dataset_dir(project_id) / engine.IMAGE_LABELS_FILE
+        return self._media_folder(
+            project_id, label, create, engine.IMAGE_LABELS_FILE, engine.IMAGES_DIR
+        )
+
+    def _media_folder(
+        self, project_id: str, label: str, create: bool, labels_file: str, media_dir: str
+    ) -> Path:
+        labels_path = self.dataset_dir(project_id) / labels_file
         label_map: dict[str, str] = (
             json.loads(labels_path.read_text(encoding="utf-8")) if labels_path.is_file() else {}
         )
         for folder_name, existing_label in label_map.items():
             if existing_label == label:
-                folder = self.dataset_dir(project_id) / engine.IMAGES_DIR / folder_name
+                folder = self.dataset_dir(project_id) / media_dir / folder_name
                 folder.mkdir(parents=True, exist_ok=True)
                 return folder
         if not create:
-            raise MLDataError(f"找不到这个图片类别：{label}。")
+            raise MLDataError(f"找不到这个类别：{label}。")
         folder_name = str(len(label_map))
         label_map[folder_name] = label
         labels_path.parent.mkdir(parents=True, exist_ok=True)
         labels_path.write_text(
             json.dumps(label_map, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        folder = self.dataset_dir(project_id) / engine.IMAGES_DIR / folder_name
+        folder = self.dataset_dir(project_id) / media_dir / folder_name
         folder.mkdir(parents=True, exist_ok=True)
         return folder
 

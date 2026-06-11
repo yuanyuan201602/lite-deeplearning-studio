@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import csv
+import math
+import struct
+import wave
 from io import StringIO
 import json
 from pathlib import Path
@@ -17,6 +20,7 @@ class TemplateService:
         task: TaskDefinition,
         request: GenerationRequest,
         user_images: dict[str, Path] | None = None,
+        user_audio: dict[str, Path] | None = None,
     ) -> list[Path]:
         files = {
             "README.md": self._render_readme(task, request),
@@ -45,7 +49,9 @@ class TemplateService:
             path.write_text(content, encoding="utf-8")
             written_files.append(path)
         written_files.extend(
-            self._write_sample_dataset(workspace.generated_dir, task, request, user_images)
+            self._write_sample_dataset(
+                workspace.generated_dir, task, request, user_images, user_audio
+            )
         )
         return written_files
 
@@ -133,6 +139,7 @@ if __name__ == "__main__":
 
 import csv
 import json
+import wave
 from pathlib import Path
 
 import joblib
@@ -199,6 +206,11 @@ def train(capability: str) -> None:
         model = LogisticRegression(max_iter=500)
         model.fit(features, labels)
         joblib.dump(model, MODELS_DIR / "image_classifier.joblib")
+    elif capability == "audio_classifier":
+        features, labels = _load_audio_dataset(DATA_DIR / "audio")
+        model = LogisticRegression(max_iter=1000)
+        model.fit(features, labels)
+        joblib.dump(model, MODELS_DIR / "audio_classifier.joblib")
     elif capability == "qa_retrieval":
         rows = _read_csv(DATA_DIR / "qa_pairs.csv")
         vectorizer = TfidfVectorizer(analyzer="char", ngram_range=(1, 3))
@@ -247,6 +259,15 @@ def predict(capability: str) -> dict:
         for image_path in image_paths:
             prediction = str(model.predict([_image_features(image_path)])[0])
             predictions.append({"image": image_path.name, "prediction": prediction})
+        _write_json("predictions.json", predictions)
+        return {"status": "ok", "predictions": predictions}
+    if capability == "audio_classifier":
+        model = joblib.load(MODELS_DIR / "audio_classifier.joblib")
+        clips = sorted((DATA_DIR / "predict_audio").glob("*.wav"))
+        predictions = []
+        for clip in clips:
+            prediction = str(model.predict([_audio_features(clip)])[0])
+            predictions.append({"audio": clip.name, "prediction": prediction})
         _write_json("predictions.json", predictions)
         return {"status": "ok", "predictions": predictions}
     if capability == "qa_retrieval":
@@ -353,6 +374,73 @@ def _load_image_dataset(root: Path) -> tuple[list[list[float]], list[str]]:
             if image_path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}:
                 continue
             features.append(_image_features(image_path))
+            labels.append(label_dir.name)
+    return features, labels
+
+
+AUDIO_SAMPLE_RATE = 16000
+AUDIO_FRAME_SIZE = 1024
+AUDIO_HOP_SIZE = 512
+AUDIO_N_BANDS = 16
+
+
+def _decode_wav(path: Path) -> np.ndarray:
+    with wave.open(str(path)) as reader:
+        channels = reader.getnchannels()
+        sample_width = reader.getsampwidth()
+        rate = reader.getframerate()
+        raw = reader.readframes(reader.getnframes())
+    if sample_width == 1:
+        samples = (np.frombuffer(raw, dtype=np.uint8).astype(np.float64) - 128.0) / 128.0
+    elif sample_width == 2:
+        samples = np.frombuffer(raw, dtype=np.int16).astype(np.float64) / 32768.0
+    elif sample_width == 4:
+        samples = np.frombuffer(raw, dtype=np.int32).astype(np.float64) / 2147483648.0
+    else:
+        raise ValueError(f"Unsupported WAV sample width: {sample_width}")
+    if channels > 1:
+        samples = samples[: len(samples) // channels * channels]
+        samples = samples.reshape(-1, channels).mean(axis=1)
+    if rate != AUDIO_SAMPLE_RATE and len(samples) > 1:
+        duration = len(samples) / rate
+        target_count = max(int(duration * AUDIO_SAMPLE_RATE), 1)
+        positions = np.linspace(0.0, len(samples) - 1.0, target_count)
+        samples = np.interp(positions, np.arange(len(samples)), samples)
+    return samples[: AUDIO_SAMPLE_RATE * 10]
+
+
+def _audio_features(path: Path) -> list[float]:
+    # Must mirror app/ml/audio_classifier.py so the bundled in-app model keeps working.
+    samples = _decode_wav(path)
+    window = np.hanning(AUDIO_FRAME_SIZE)
+    band_rows = []
+    rms_values = []
+    zcr_values = []
+    for start in range(0, len(samples) - AUDIO_FRAME_SIZE + 1, AUDIO_HOP_SIZE):
+        frame = samples[start : start + AUDIO_FRAME_SIZE]
+        spectrum = np.abs(np.fft.rfft(frame * window))
+        bands = np.array_split(spectrum, AUDIO_N_BANDS)
+        band_rows.append(np.log1p(np.array([band.mean() for band in bands])))
+        rms_values.append(float(np.sqrt(np.mean(frame**2))))
+        zcr_values.append(float(np.mean(np.abs(np.diff(np.sign(frame))) > 0)))
+    bands_matrix = np.array(band_rows)
+    features = np.concatenate(
+        [
+            bands_matrix.mean(axis=0),
+            bands_matrix.std(axis=0),
+            [np.mean(rms_values), np.std(rms_values)],
+            [np.mean(zcr_values), np.std(zcr_values)],
+        ]
+    )
+    return features.tolist()
+
+
+def _load_audio_dataset(root: Path) -> tuple[list[list[float]], list[str]]:
+    features: list[list[float]] = []
+    labels: list[str] = []
+    for label_dir in sorted(path for path in root.iterdir() if path.is_dir()):
+        for clip in sorted(label_dir.glob("*.wav")):
+            features.append(_audio_features(clip))
             labels.append(label_dir.name)
     return features, labels
 
@@ -812,6 +900,7 @@ python run.py
         task: TaskDefinition,
         request: GenerationRequest,
         user_images: dict[str, Path] | None = None,
+        user_audio: dict[str, Path] | None = None,
     ) -> list[Path]:
         source_files: list[str]
         if task.sample_dataset_kind == "text":
@@ -820,6 +909,9 @@ python run.py
         elif task.sample_dataset_kind == "image":
             paths = self._write_image_dataset(generated_dir, request, user_images)
             source_files = ["data_sample/images/", "data_sample/predict_images/"]
+        elif task.sample_dataset_kind == "audio":
+            paths = self._write_audio_dataset(generated_dir, request, user_audio)
+            source_files = ["data_sample/audio/", "data_sample/predict_audio/"]
         elif task.sample_dataset_kind == "qa":
             paths = self._write_qa_dataset(generated_dir, request)
             source_files = ["data_sample/qa_pairs.csv"]
@@ -830,7 +922,9 @@ python run.py
             paths = self._write_ocr_dataset(generated_dir, request)
             source_files = ["data_sample/ocr_cases.csv"]
         paths.append(
-            self._write_data_manifest(generated_dir, task, request, source_files, user_images)
+            self._write_data_manifest(
+                generated_dir, task, request, source_files, user_images, user_audio
+            )
         )
         return paths
 
@@ -974,28 +1068,74 @@ python run.py
         generated_dir: Path,
         user_images: dict[str, Path],
     ) -> list[Path]:
+        return self._copy_user_media(generated_dir, user_images, "images", "predict_images")
+
+    def _copy_user_media(
+        self,
+        generated_dir: Path,
+        user_folders: dict[str, Path],
+        data_dirname: str,
+        predict_dirname: str,
+    ) -> list[Path]:
         paths: list[Path] = []
-        for label, source_folder in user_images.items():
+        for label, source_folder in user_folders.items():
             safe_label = self._safe_label(label)
-            image_files = sorted(path for path in source_folder.glob("*") if path.is_file())
-            for image_file in image_files:
+            media_files = sorted(path for path in source_folder.glob("*") if path.is_file())
+            for media_file in media_files:
                 target = (
-                    generated_dir / "data_sample" / "images" / safe_label / image_file.name
+                    generated_dir / "data_sample" / data_dirname / safe_label / media_file.name
                 )
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(image_file.read_bytes())
+                target.write_bytes(media_file.read_bytes())
                 paths.append(target)
-            if image_files:
+            if media_files:
                 predict_target = (
                     generated_dir
                     / "data_sample"
-                    / "predict_images"
-                    / f"{safe_label}{image_files[0].suffix}"
+                    / predict_dirname
+                    / f"{safe_label}{media_files[0].suffix}"
                 )
                 predict_target.parent.mkdir(parents=True, exist_ok=True)
-                predict_target.write_bytes(image_files[0].read_bytes())
+                predict_target.write_bytes(media_files[0].read_bytes())
                 paths.append(predict_target)
         return paths
+
+    def _write_audio_dataset(
+        self,
+        generated_dir: Path,
+        request: GenerationRequest,
+        user_audio: dict[str, Path] | None = None,
+    ) -> list[Path]:
+        if user_audio:
+            return self._copy_user_media(generated_dir, user_audio, "audio", "predict_audio")
+        labels = request.class_labels or ["低音", "高音"]
+        base_frequencies = [220.0, 880.0, 440.0]
+        paths: list[Path] = []
+        for index, label in enumerate(labels[:3]):
+            safe_label = self._safe_label(label)
+            base = base_frequencies[index % len(base_frequencies)]
+            for sample_index in range(3):
+                path = generated_dir / "data_sample" / "audio" / safe_label / f"{sample_index}.wav"
+                self._write_sine_wav(path, base * (1.0 + 0.04 * sample_index))
+                paths.append(path)
+            predict_path = generated_dir / "data_sample" / "predict_audio" / f"{safe_label}.wav"
+            self._write_sine_wav(predict_path, base * 1.02)
+            paths.append(predict_path)
+        return paths
+
+    def _write_sine_wav(
+        self, path: Path, frequency: float, duration: float = 0.6, rate: int = 16000
+    ) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        frames = bytearray()
+        for index in range(int(duration * rate)):
+            value = int(0.4 * 32767 * math.sin(2 * math.pi * frequency * index / rate))
+            frames += struct.pack("<h", value)
+        with wave.open(str(path), "wb") as writer:
+            writer.setnchannels(1)
+            writer.setsampwidth(2)
+            writer.setframerate(rate)
+            writer.writeframes(bytes(frames))
 
     def _write_files(self, generated_dir: Path, files: dict[str, str]) -> list[Path]:
         paths: list[Path] = []
@@ -1044,9 +1184,10 @@ python run.py
         request: GenerationRequest,
         source_files: list[str],
         user_images: dict[str, Path] | None = None,
+        user_audio: dict[str, Path] | None = None,
     ) -> Path:
         manifest = {
-            "data_origin": self._data_origin(task, request, user_images),
+            "data_origin": self._data_origin(task, request, user_images, user_audio),
             "sample_dataset_kind": task.sample_dataset_kind,
             "source_files": source_files,
         }
@@ -1060,6 +1201,7 @@ python run.py
         task: TaskDefinition,
         request: GenerationRequest,
         user_images: dict[str, Path] | None = None,
+        user_audio: dict[str, Path] | None = None,
     ) -> str:
         user_data_by_kind = {
             "text": request.text_csv,
@@ -1067,6 +1209,7 @@ python run.py
             "sensor": request.sensor_csv,
             "ocr": f"{request.ocr_correct_text}{request.ocr_observed_text}",
             "image": "yes" if user_images else "",
+            "audio": "yes" if user_audio else "",
         }
         return "user" if user_data_by_kind[task.sample_dataset_kind].strip() else "sample"
 

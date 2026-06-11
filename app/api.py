@@ -109,6 +109,25 @@ def create_api_router(
         project_service.remove_image_label(info, payload.label)
         return project_state(info, task)
 
+    @router.post("/{project_id}/data/audio")
+    async def upload_audio(
+        project_id: str,
+        label: str = Form(...),
+        files: list[UploadFile] = File(...),
+    ) -> dict:
+        info, task = load_project(project_id)
+        clips = [(upload.filename or "clip.wav", await upload.read()) for upload in files]
+        saved = project_service.add_audio_clips(info, label, clips)
+        state = project_state(info, task)
+        state["saved"] = saved
+        return state
+
+    @router.post("/{project_id}/data/audio/remove")
+    def remove_audio_label(project_id: str, payload: ImageLabelPayload) -> dict:
+        info, task = load_project(project_id)
+        project_service.remove_audio_label(info, payload.label)
+        return project_state(info, task)
+
     @router.post("/{project_id}/train")
     def train(project_id: str) -> dict:
         info, task = load_project(project_id)
@@ -131,6 +150,12 @@ def create_api_router(
         info, task = load_project(project_id)
         image_bytes = await file.read()
         return project_service.predict(info, task.ai_capability, {"image_bytes": image_bytes})
+
+    @router.post("/{project_id}/predict/audio")
+    async def predict_audio(project_id: str, file: UploadFile = File(...)) -> dict:
+        info, task = load_project(project_id)
+        audio_bytes = await file.read()
+        return project_service.predict(info, task.ai_capability, {"audio_bytes": audio_bytes})
 
     @router.post("/{project_id}/export")
     def export(project_id: str) -> dict:
