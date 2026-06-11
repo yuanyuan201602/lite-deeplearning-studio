@@ -26,6 +26,9 @@ ocr = [
   "opencv-python-headless>=4.10.0",
   "torch>=2.3.0",
 ]
+vision = [
+  "opencv-python-headless>=4.10.0",
+]
 
 [build-system]
 requires = ["setuptools>=68"]

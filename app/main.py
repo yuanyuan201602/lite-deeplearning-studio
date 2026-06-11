@@ -4,13 +4,14 @@ import json
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from app.api import create_api_router, register_ml_error_handler
+from app.ml import object_detector
 from app.models import AppEdition, ProjectCreateRequest
 from app.services.export_service import ExportService
 from app.services.project_service import ProjectService
@@ -132,6 +133,22 @@ def create_app(
     @app.get("/favicon.ico")
     def favicon() -> Response:
         return Response(status_code=204)
+
+    @app.get("/playground/detect", response_class=HTMLResponse)
+    def detect_playground(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse(
+            request=request,
+            name="playground_detect.html",
+            context={
+                **base_context(request),
+                "detector_available": object_detector.is_available(),
+                "install_hint": object_detector.INSTALL_HINT,
+            },
+        )
+
+    @app.post("/api/playground/detect")
+    async def detect_api(file: UploadFile = File(...)) -> dict:
+        return object_detector.detect_faces(await file.read())
 
     @app.get("/workflow/{competition_slug}/{task_slug}", response_class=HTMLResponse)
     def workflow(request: Request, competition_slug: str, task_slug: str) -> HTMLResponse:

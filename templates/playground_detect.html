@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}目标检测体验 · {{ app_title }}{% endblock %}
+
+{% block content %}
+  <nav class="crumbs"><a href="/">工作台</a> / 目标检测体验</nav>
+
+  <section class="competition-head">
+    <p class="eyebrow">✻ 体验任务</p>
+    <h1>目标检测体验</h1>
+    <p class="intro-copy">
+      图像分类回答"这张图是什么"，目标检测回答"东西在图里的哪个位置"。
+      上传一张有人物的照片，AI 会找到每张人脸并画框——这就是检测框（bounding box）。
+    </p>
+  </section>
+
+  {% if not detector_available %}
+    <p class="form-error">{{ install_hint }}</p>
+  {% endif %}
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>上传照片试试</h2>
+      <p class="panel-hint">支持 PNG / JPG。照片里的人脸越清晰、越正对镜头，越容易被找到。</p>
+    </div>
+    <input type="file" id="detect-file" accept="image/*" />
+    <div class="panel-actions">
+      <button class="btn-primary" id="detect-button" type="button">找出照片里的人脸</button>
+      <span class="status-text" id="detect-status"></span>
+    </div>
+    <canvas id="detect-canvas" class="detect-canvas" hidden></canvas>
+  </section>
+
+  <script>
+    "use strict";
+    const fileInput = document.getElementById("detect-file");
+    const detectButton = document.getElementById("detect-button");
+    const statusText = document.getElementById("detect-status");
+    const canvas = document.getElementById("detect-canvas");
+    const ctx = canvas.getContext("2d");
+    const MAX_CANVAS_WIDTH = 720;
+    let loadedImage = null;
+
+    function setStatus(message, isError) {
+      statusText.textContent = message;
+      statusText.classList.toggle("status-error", Boolean(isError));
+      statusText.classList.toggle("status-ok", !isError && Boolean(message));
+    }
+
+    function drawImage() {
+      const scale = Math.min(1, MAX_CANVAS_WIDTH / loadedImage.width);
+      canvas.width = Math.round(loadedImage.width * scale);
+      canvas.height = Math.round(loadedImage.height * scale);
+      canvas.hidden = false;
+      ctx.drawImage(loadedImage, 0, 0, canvas.width, canvas.height);
+      return scale;
+    }
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const image = new Image();
+      image.onload = () => {
+        loadedImage = image;
+        drawImage();
+        setStatus("", false);
+      };
+      image.src = URL.createObjectURL(file);
+    });
+
+    detectButton.addEventListener("click", async () => {
+      if (!fileInput.files.length || !loadedImage) {
+        setStatus("请先选择一张照片。", true);
+        return;
+      }
+      detectButton.disabled = true;
+      setStatus("正在寻找人脸……", false);
+      try {
+        const form = new FormData();
+        form.append("file", fileInput.files[0]);
+        const response = await fetch("/api/playground/detect", { method: "POST", body: form });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || "检测失败，请重试。");
+        drawImage();
+        const ratio = canvas.width / data.width;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#d97757";
+        ctx.fillStyle = "#d97757";
+        ctx.font = "14px sans-serif";
+        for (const box of data.boxes) {
+          const x = box.x * ratio;
+          const y = box.y * ratio;
+          const w = box.w * ratio;
+          const h = box.h * ratio;
+          ctx.strokeRect(x, y, w, h);
+          ctx.fillText(box.label, x + 4, Math.max(14, y - 6));
+        }
+        setStatus(
+          data.count > 0
+            ? `找到 ${data.count} 张人脸！每个框就是一个检测结果。`
+            : "没有找到人脸。换一张人脸更清晰、更正面的照片试试。",
+          false
+        );
+      } catch (error) {
+        setStatus(error.message, true);
+      } finally {
+        detectButton.disabled = false;
+      }
+    });
+  </script>
+{% endblock %}
