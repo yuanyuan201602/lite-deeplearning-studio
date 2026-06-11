@@ -39,7 +39,7 @@
 开发安装：
 
 ```bash
-python -m pip install -e ".[dev,ai]"
+python -m pip install -e ".[dev]"
 ```
 
 运行测试：
@@ -98,9 +98,9 @@ Release 说明示例：
 ```markdown
 ## 安装路径
 
-- 基础安装：`python -m pip install -e .`
+- 基础安装：`python -m pip install -e .`（含全部应用内训练能力）
 - OCR 安装：`python -m pip install -e ".[ocr]"`
-- 开发安装：`python -m pip install -e ".[dev,ai,ocr]"`
+- 开发安装：`python -m pip install -e ".[dev,ocr]"`
 
 ## 启动
 

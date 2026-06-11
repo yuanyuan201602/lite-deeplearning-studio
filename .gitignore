@@ -33,6 +33,9 @@ dist/
 .idea/
 .vscode/
 
+# Local Claude Code workflow files
+.claude/
+
 # Keep repository delivery files visible even with broad artifact ignores.
 !docs/
 !scripts/

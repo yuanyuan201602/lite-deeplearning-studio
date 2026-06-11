@@ -32,7 +32,7 @@ cd lite-deeplearning-studio
 
 ## 3. 基础安装
 
-基础安装适合大多数学生机，用于打开网页、选择任务、生成导出包，以及运行非 OCR 的轻量样例。
+基础安装适合所有学生机，包含应用内训练所需的 scikit-learn 等机器学习依赖，可以完成全部非 OCR 任务：上传数据、训练模型、测试效果、导出比赛材料包。
 
 macOS / Linux：
 
@@ -68,7 +68,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 ## 4. OCR 安装
 
-OCR 安装用于智能博物错别字检查等需要 EasyOCR 的任务。该路径会安装 Torch、OpenCV 和 EasyOCR，下载时间更长，对磁盘和网络要求更高。
+OCR 安装只用于智能博物错别字任务的「拍照识别文字」环节（应用内的文字查错不需要它）。该路径会安装 Torch、OpenCV 和 EasyOCR，下载时间更长，对磁盘和网络要求更高。
 
 ```bash
 python -m pip install -e ".[ocr]"
@@ -79,10 +79,10 @@ python scripts/start_studio.py
 
 ## 5. 开发安装
 
-开发安装适合教师、助教或需要改代码的同学，包含测试、lint、轻量 AI 样例和 OCR 依赖。
+开发安装适合教师、助教或需要改代码的同学，包含测试和 lint 工具，可以再叠加 OCR 依赖。
 
 ```bash
-python -m pip install -e ".[dev,ai,ocr]"
+python -m pip install -e ".[dev,ocr]"
 python -m pytest -q
 python -m ruff check app scripts packaging tests
 python scripts/start_studio.py --reload
@@ -91,7 +91,7 @@ python scripts/start_studio.py --reload
 如果不需要 OCR，可以使用：
 
 ```bash
-python -m pip install -e ".[dev,ai]"
+python -m pip install -e ".[dev]"
 ```
 
 ## 6. 生成发布包
@@ -144,9 +144,14 @@ Windows 学生机推荐使用类似 setup 的双击安装入口：
 
 包内也保留英文入口：`setup.bat`、`setup_ocr.bat`、`start.bat`、`uninstall.bat`，方便部分 Windows 环境处理中文文件名异常时使用。
 
+macOS 学生机推荐双击安装入口：
+
+- 安装：双击 `一键安装.command`
+- 启动：双击 `启动软件.command`（首次双击如提示“无法验证开发者”，右键点击文件后选择“打开”）
+
 其他系统按系统运行：
 
-- macOS / Linux：`./install_macos_linux.sh`，然后 `./start_macos_linux.sh`
+- macOS / Linux 命令行：`./install_macos_linux.sh`，然后 `./start_macos_linux.sh`
 - Windows PowerShell 备用方式：`.\install_windows.ps1`，然后 `.\start_windows.ps1`
 
 如果需要 OCR 增强能力，在安装脚本后追加 `ocr`：
@@ -183,4 +188,8 @@ python3 scripts/start_studio.py
 
 ### 不要提交本地生成任务包
 
-学生生成的任务包会放在 `workspace/`，该目录默认由 `.gitignore` 忽略。
+学生项目数据（数据集、模型、导出包）都放在 `workspace/`，该目录默认由 `.gitignore` 忽略。
+
+## 8. 服务器部署
+
+如果学校希望全班共用一个网址而不在每台学生机上安装，可以用 Docker 部署到机房服务器，见 [DEPLOYMENT.md](DEPLOYMENT.md)。
