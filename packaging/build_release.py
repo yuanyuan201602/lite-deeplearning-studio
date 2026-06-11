@@ -20,6 +20,9 @@ INCLUDE_PATHS = [
     "README.md",
     ".gitignore",
     "pyproject.toml",
+    "Dockerfile",
+    "docker-compose.yml",
+    ".dockerignore",
 ]
 EXCLUDED_DIR_NAMES = {
     "__pycache__",

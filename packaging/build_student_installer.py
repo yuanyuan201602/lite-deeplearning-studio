@@ -22,7 +22,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 export LDS_EDITION="__EDITION__"
 
-EXTRA="${1:-ai}"
+EXTRA="${1:-base}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
@@ -34,9 +34,9 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 
 if [ "$EXTRA" = "ocr" ]; then
-  python -m pip install -e ".[ai,ocr]"
+  python -m pip install -e ".[ocr]"
 else
-  python -m pip install -e ".[ai]"
+  python -m pip install -e .
 fi
 
 echo "安装完成。运行 ./start_macos_linux.sh 后打开 http://127.0.0.1:8000"
@@ -48,7 +48,52 @@ set -euo pipefail
 cd "$(dirname "$0")"
 export LDS_EDITION="__EDITION__"
 source .venv/bin/activate
-python scripts/start_studio.py
+python scripts/start_studio.py --open
+"""
+
+
+INSTALL_COMMAND = """#!/usr/bin/env bash
+# macOS 双击入口：一键安装 __APP_TITLE__
+set -euo pipefail
+cd "$(dirname "$0")"
+export LDS_EDITION="__EDITION__"
+
+echo "========================================"
+echo "__APP_TITLE__ 一键安装 (macOS)"
+echo "========================================"
+
+PYTHON_BIN="python3"
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+  echo "[错误] 未找到 Python。请先到 https://www.python.org/downloads/ 安装 Python 3.11+。"
+  read -r -p "按回车键退出..." _
+  exit 1
+fi
+
+"$PYTHON_BIN" -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
+
+echo ""
+echo "安装完成。双击 启动软件.command 即可启动，浏览器会自动打开。"
+read -r -p "按回车键退出..." _
+"""
+
+
+START_COMMAND = """#!/usr/bin/env bash
+# macOS 双击入口：启动 __APP_TITLE__
+set -euo pipefail
+cd "$(dirname "$0")"
+export LDS_EDITION="__EDITION__"
+
+if [ ! -x ".venv/bin/python" ]; then
+  echo "尚未安装，请先双击 一键安装.command。"
+  read -r -p "按回车键退出..." _
+  exit 1
+fi
+
+echo "__APP_TITLE__ 正在启动，浏览器会自动打开 http://127.0.0.1:8000"
+.venv/bin/python scripts/start_studio.py --open
 """
 
 
@@ -56,7 +101,7 @@ INSTALL_PS1 = """$ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 $env:LDS_EDITION = "__EDITION__"
 
-$extra = "ai"
+$extra = "base"
 if ($args.Count -gt 0) {
     $extra = $args[0]
 }
@@ -65,9 +110,9 @@ python -m venv .venv
 .\\.venv\\Scripts\\python.exe -m pip install --upgrade pip
 
 if ($extra -eq "ocr") {
-    .\\.venv\\Scripts\\python.exe -m pip install -e ".[ai,ocr]"
+    .\\.venv\\Scripts\\python.exe -m pip install -e ".[ocr]"
 } else {
-    .\\.venv\\Scripts\\python.exe -m pip install -e ".[ai]"
+    .\\.venv\\Scripts\\python.exe -m pip install -e "."
 }
 
 Write-Host "安装完成。运行 .\\start_windows.ps1 后打开 http://127.0.0.1:8000"
@@ -77,11 +122,26 @@ Write-Host "安装完成。运行 .\\start_windows.ps1 后打开 http://127.0.0.
 START_PS1 = """$ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 $env:LDS_EDITION = "__EDITION__"
-.\\.venv\\Scripts\\python.exe scripts\\start_studio.py
+.\\.venv\\Scripts\\python.exe scripts\\start_studio.py --open
 """
 
 
-SETUP_BAT = """@echo off
+FIND_PYTHON_BAT_SNIPPET = """set PYTHON_CMD=python
+where python >nul 2>nul
+if errorlevel 1 (
+  where py >nul 2>nul
+  if errorlevel 1 (
+    echo [ERROR] 未找到 Python。请先安装 Python 3.11 或 3.12，并勾选 Add python.exe to PATH。
+    echo 下载地址: https://www.python.org/downloads/
+    pause
+    exit /b 1
+  )
+  set PYTHON_CMD=py -3
+)
+"""
+
+
+SETUP_BAT = f"""@echo off
 setlocal
 cd /d "%~dp0"
 set LDS_EDITION=__EDITION__
@@ -90,15 +150,8 @@ echo __APP_TITLE__ Setup
 echo ========================================
 echo.
 
-where python >nul 2>nul
-if errorlevel 1 (
-  echo [ERROR] 未找到 Python。请先安装 Python 3.11 或 3.12，并勾选 Add python.exe to PATH。
-  echo 下载地址: https://www.python.org/downloads/
-  pause
-  exit /b 1
-)
-
-python -m venv .venv
+{FIND_PYTHON_BAT_SNIPPET}
+%PYTHON_CMD% -m venv .venv
 if errorlevel 1 (
   echo [ERROR] 创建本地运行环境失败。
   pause
@@ -106,7 +159,7 @@ if errorlevel 1 (
 )
 
 ".venv\\Scripts\\python.exe" -m pip install --upgrade pip
-".venv\\Scripts\\python.exe" -m pip install -e ".[ai]"
+".venv\\Scripts\\python.exe" -m pip install -e "."
 if errorlevel 1 (
   echo [ERROR] 安装依赖失败，请检查网络或联系老师。
   pause
@@ -118,12 +171,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File create_desktop_shortcut.ps1
 echo.
 echo 安装完成。
 echo 可以双击 启动软件.bat 启动，或使用桌面快捷方式。
-echo 启动后打开 http://127.0.0.1:8000
+echo 启动后浏览器会自动打开 http://127.0.0.1:8000
 pause
 """
 
 
-SETUP_OCR_BAT = """@echo off
+SETUP_OCR_BAT = f"""@echo off
 setlocal
 cd /d "%~dp0"
 set LDS_EDITION=__EDITION__
@@ -134,15 +187,8 @@ echo.
 echo OCR 增强安装会下载 EasyOCR、Torch 和 OpenCV，耗时更长。
 echo.
 
-where python >nul 2>nul
-if errorlevel 1 (
-  echo [ERROR] 未找到 Python。请先安装 Python 3.11 或 3.12，并勾选 Add python.exe to PATH。
-  echo 下载地址: https://www.python.org/downloads/
-  pause
-  exit /b 1
-)
-
-python -m venv .venv
+{FIND_PYTHON_BAT_SNIPPET}
+%PYTHON_CMD% -m venv .venv
 if errorlevel 1 (
   echo [ERROR] 创建本地运行环境失败。
   pause
@@ -150,7 +196,7 @@ if errorlevel 1 (
 )
 
 ".venv\\Scripts\\python.exe" -m pip install --upgrade pip
-".venv\\Scripts\\python.exe" -m pip install -e ".[ai,ocr]"
+".venv\\Scripts\\python.exe" -m pip install -e ".[ocr]"
 
 if errorlevel 1 (
   echo [ERROR] OCR 增强依赖安装失败。基础功能仍可使用。
@@ -171,13 +217,13 @@ setlocal
 cd /d "%~dp0"
 set LDS_EDITION=__EDITION__
 if not exist ".venv\\Scripts\\python.exe" (
-  echo 尚未安装，请先双击 setup.bat。
+  echo 尚未安装，请先双击 一键安装.bat。
   pause
   exit /b 1
 )
 echo __APP_TITLE__ 正在启动...
-echo 浏览器地址: http://127.0.0.1:8000
-".venv\\Scripts\\python.exe" scripts\\start_studio.py
+echo 浏览器会自动打开 http://127.0.0.1:8000
+".venv\\Scripts\\python.exe" scripts\\start_studio.py --open
 pause
 """
 
@@ -186,7 +232,7 @@ UNINSTALL_BAT = """@echo off
 setlocal
 cd /d "%~dp0"
 echo 这会删除本目录中的 .venv 和 workspace。
-choice /C YN /M "确认卸载本地运行环境和学生生成任务包吗"
+choice /C YN /M "确认卸载本地运行环境和学生项目数据吗"
 if errorlevel 2 exit /b 0
 
 if exist ".venv" rmdir /S /Q ".venv"
@@ -218,21 +264,21 @@ WINDOWS_INSTALL_README = """# __APP_TITLE__ Windows 学生机安装说明
 1. 解压整个安装包。
 2. 双击 `一键安装.bat`。
 3. 安装完成后双击 `启动软件.bat`，或使用桌面快捷方式。
-4. 浏览器打开 `http://127.0.0.1:8000`。
+4. 浏览器会自动打开 `http://127.0.0.1:8000`。
 
 ## OCR 增强安装
 
-如果要使用智能博物错别字 OCR 任务，双击：
+如果要使用智能博物错别字 OCR 任务的拍照识别，双击：
 
 ```text
 安装OCR增强.bat
 ```
 
-OCR 会下载 EasyOCR、Torch 和 OpenCV，速度较慢。普通图像识别、文本分类、问答和传感器任务只需要 `setup.bat`。
+OCR 会下载 EasyOCR、Torch 和 OpenCV，速度较慢。文本分类、图像识别、问答、传感器和文字查错任务只需要 `一键安装.bat`。
 
 ## 卸载
 
-双击 `卸载本地环境.bat` 会删除本地运行环境 `.venv` 和学生生成的 `workspace`。
+双击 `卸载本地环境.bat` 会删除本地运行环境 `.venv` 和学生项目数据 `workspace`。
 
 如果需要彻底删除，直接删除整个文件夹。
 """
@@ -256,7 +302,17 @@ OCR 增强安装：
 双击 启动软件.bat
 ```
 
-## macOS / Linux
+## macOS 推荐方式
+
+```text
+双击 一键安装.command
+双击 启动软件.command
+```
+
+第一次双击 .command 文件时，如果系统提示“无法验证开发者”，
+请右键点击文件，选择“打开”。
+
+## macOS / Linux 命令行
 
 基础安装：
 
@@ -276,27 +332,18 @@ OCR 增强安装：
 
 如果学校电脑限制 `.bat`，可以改用 PowerShell：
 
-基础安装：
-
 ```powershell
 .\\install_windows.ps1
 .\\start_windows.ps1
 ```
 
-OCR 增强安装：
-
-```powershell
-.\\install_windows.ps1 ocr
-.\\start_windows.ps1
-```
-
-启动后打开：
+启动后浏览器会自动打开：
 
 ```text
 http://127.0.0.1:8000
 ```
 
-基础安装适合大多数课堂任务；OCR 增强安装用于智能博物错别字识别任务，下载更慢，占用空间更大。
+基础安装适合所有课堂任务（含应用内训练）；OCR 增强安装只用于智能博物错别字拍照识别，下载更慢，占用空间更大。
 """
 
 
@@ -311,6 +358,8 @@ GENERATED_FILES = {
     "安装OCR增强.bat": SETUP_OCR_BAT,
     "启动软件.bat": START_BAT,
     "卸载本地环境.bat": UNINSTALL_BAT,
+    "一键安装.command": INSTALL_COMMAND,
+    "启动软件.command": START_COMMAND,
     "create_desktop_shortcut.ps1": CREATE_SHORTCUT_PS1,
     "install_macos_linux.sh": INSTALL_SH,
     "start_macos_linux.sh": START_SH,
@@ -342,7 +391,7 @@ def render_generated_content(content: str, edition: str) -> str:
 
 def add_text_file(archive: ZipFile, relative_name: str, content: str, edition: str) -> None:
     info = ZipInfo(f"{PACKAGE_ROOT}/{relative_name}")
-    if relative_name.endswith(".sh"):
+    if relative_name.endswith((".sh", ".command")):
         info.external_attr = 0o755 << 16
     archive.writestr(info, render_generated_content(content, edition))
 

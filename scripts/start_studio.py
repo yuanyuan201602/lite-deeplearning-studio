@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import os
+import threading
+import webbrowser
 
 import uvicorn
 
@@ -16,6 +18,11 @@ def parse_args() -> argparse.Namespace:
         help="Reload on code changes. Useful for development installs.",
     )
     parser.add_argument(
+        "--open",
+        action="store_true",
+        help="Open the browser automatically after the server starts.",
+    )
+    parser.add_argument(
         "--edition",
         choices=["all", "smart_museum", "future_creator"],
         default=os.environ.get("LDS_EDITION", "all"),
@@ -24,9 +31,18 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def open_browser_later(url: str, delay_seconds: float = 1.5) -> None:
+    timer = threading.Timer(delay_seconds, webbrowser.open, args=(url,))
+    timer.daemon = True
+    timer.start()
+
+
 def main() -> None:
     args = parse_args()
     os.environ["LDS_EDITION"] = args.edition
+    if args.open and not args.reload:
+        browse_host = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
+        open_browser_later(f"http://{browse_host}:{args.port}")
     uvicorn.run(
         "app.main:app",
         host=args.host,

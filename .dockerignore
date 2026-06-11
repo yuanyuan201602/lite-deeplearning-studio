@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+workspace
+dist
+tmp
+docs
+tests
+packaging
+uv.lock

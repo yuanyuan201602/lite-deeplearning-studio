@@ -1,0 +1,13 @@
+services:
+  studio:
+    build: .
+    image: lite-deeplearning-studio
+    container_name: lite-deeplearning-studio
+    ports:
+      - "${LDS_PORT:-8000}:8000"
+    environment:
+      # all / smart_museum / future_creator
+      LDS_EDITION: ${LDS_EDITION:-all}
+    volumes:
+      - ./workspace:/app/workspace
+    restart: unless-stopped
