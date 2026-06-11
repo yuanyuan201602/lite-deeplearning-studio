@@ -8,7 +8,7 @@
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_face_intro",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-9959f25e/exports/1-9959f25e.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-w67gjsmh/round-1/projects/1-08a96dd4/exports/1-08a96dd4.zip",
       "passed": true,
       "failures": []
     },
@@ -16,7 +16,7 @@
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_ocr_typo",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-30730483/exports/1-30730483.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-w67gjsmh/round-1/projects/1-b0d97357/exports/1-b0d97357.zip",
       "passed": true,
       "failures": []
     },
@@ -24,7 +24,7 @@
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_text_classifier",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-2c6a78c4/exports/1-2c6a78c4.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-w67gjsmh/round-1/projects/1-d612bb4b/exports/1-d612bb4b.zip",
       "passed": true,
       "failures": []
     },
@@ -32,7 +32,7 @@
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_sentence_classifier",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-31b0d0ab/exports/1-31b0d0ab.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-w67gjsmh/round-1/projects/1-474b970c/exports/1-474b970c.zip",
       "passed": true,
       "failures": []
     },
@@ -40,7 +40,7 @@
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_qa_helper",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-8fc94063/exports/1-8fc94063.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-w67gjsmh/round-1/projects/1-ca41cf96/exports/1-ca41cf96.zip",
       "passed": true,
       "failures": []
     },
@@ -48,7 +48,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "image_recognition_starter",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-ba1430fa/exports/1-ba1430fa.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-w67gjsmh/round-1/projects/1-c9ab0fdf/exports/1-c9ab0fdf.zip",
       "passed": true,
       "failures": []
     },
@@ -56,7 +56,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "sensor_decision_template",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-94281f4e/exports/1-94281f4e.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-w67gjsmh/round-1/projects/1-635e81e0/exports/1-635e81e0.zip",
       "passed": true,
       "failures": []
     },
@@ -64,7 +64,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "primary_voice_image_interaction",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-f0bd9980/exports/1-f0bd9980.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-w67gjsmh/round-1/projects/1-dac4e390/exports/1-dac4e390.zip",
       "passed": true,
       "failures": []
     },
@@ -72,7 +72,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "junior_model_calling_workflow",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-371963bf/exports/1-371963bf.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-w67gjsmh/round-1/projects/1-3e0e9f9d/exports/1-3e0e9f9d.zip",
       "passed": true,
       "failures": []
     },
@@ -80,7 +80,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "senior_llm_vision_motion",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-orgeamxh/round-1/projects/1-b421de00/exports/1-b421de00.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-w67gjsmh/round-1/projects/1-8ecde7cb/exports/1-8ecde7cb.zip",
       "passed": true,
       "failures": []
     },

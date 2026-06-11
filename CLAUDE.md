@@ -44,15 +44,19 @@ docker compose up -d --build
 ```
 app/main.py               App factory (create_app). HTML routes: / (workbench: general ML tasks +
                           competition entries), /competition/{slug}, /workflow, /projects (form POST),
-                          /project/{id}, /exports. Mounts the JSON API router.
-app/api.py                JSON API under /api/projects/{id}: state, data/{text,qa,sensor,ocr,images},
-                          train, predict, predict/image, export. MLDataError → 400 with Chinese detail.
+                          /project/{id}, /exports, /playground/detect (face-detection demo +
+                          /api/playground/detect; needs .[vision], degrades with install hint).
+                          Mounts the JSON API router.
+app/api.py                JSON API under /api/projects/{id}: state, data/{text,qa,sensor,ocr,images,audio},
+                          train, predict, predict/{image,audio}, export (export 400s until trained).
+                          MLDataError → 400 with Chinese detail.
 app/models.py             Pydantic models and Literal types (TaskDefinition, ProjectInfo, GenerationRequest).
 app/task_catalog.py       Static catalog of all tasks; list_competitions / get_task helpers.
                           GENERAL_ML ("general_ml") holds non-competition practice tasks for the
                           workbench homepage; it bypasses edition filtering and has no /competition page.
 app/ml/                   In-app ML engine, one module per ai_capability:
-                          text_classifier, image_classifier, qa_retrieval, sensor_model, ocr_checker.
+                          text_classifier, image_classifier, audio_classifier, qa_retrieval,
+                          sensor_model, ocr_checker; object_detector.py is the cv2-optional demo.
                           engine.py dispatches by capability; base.py has MLDataError + model meta I/O.
 app/services/
   project_service.py      Project persistence under workspace/projects/<id>/ (dataset/, models/,
@@ -69,7 +73,10 @@ static/logo.svg           School badge placeholder — replace the file to swap 
 
 The exported `ai_runtime/core.py` (rendered by template_service) must load the model trained in-app:
 - image features: 32×32 RGB, /255, flatten — identical in `app/ml/image_classifier.py` and the template
-- qa store keys: `{"vectorizer", "matrix", "rows"}`; questions are whitespace-stripped before vectorizing
+- audio features: 16kHz mono resample, 1024/512 framing, 16 log band energies + RMS/ZCR mean&std —
+  identical in `app/ml/audio_classifier.py` and the template
+- qa store keys: `{"vectorizer", "matrix", "rows"}`; questions are space-stripped and interrogative
+  stopwords removed before vectorizing (QUESTION_STOPWORDS mirrored in both places)
 - sensor store: `{"model", "feature_names"}`; CSV is header-driven, last column = action label
 - export copies `models/model.joblib` → `models/<capability>.joblib` in the package
 
