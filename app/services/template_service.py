@@ -149,6 +149,21 @@ DATA_DIR = ROOT / "data_sample"
 MODELS_DIR = ROOT / "models"
 OUTPUTS_DIR = ROOT / "outputs"
 
+# Must mirror app/ml/qa_retrieval.py so the bundled in-app model keeps working.
+# Longer words first so "为什么" is removed before "什么".
+QA_QUESTION_STOPWORDS = [
+    "为什么", "怎么样", "什么", "怎样", "怎么", "如何", "哪些", "哪个", "哪里",
+    "请问", "一下", "是", "的", "吗", "呢", "啊", "？", "?",
+]
+
+
+def _normalize_question(text: str) -> str:
+    stripped = "".join(text.split())
+    normalized = stripped
+    for word in QA_QUESTION_STOPWORDS:
+        normalized = normalized.replace(word, "")
+    return normalized or stripped
+
 
 def run_pipeline(capability: str) -> None:
     MODELS_DIR.mkdir(exist_ok=True)
@@ -187,7 +202,7 @@ def train(capability: str) -> None:
     elif capability == "qa_retrieval":
         rows = _read_csv(DATA_DIR / "qa_pairs.csv")
         vectorizer = TfidfVectorizer(analyzer="char", ngram_range=(1, 3))
-        matrix = vectorizer.fit_transform(["".join(row["question"].split()) for row in rows])
+        matrix = vectorizer.fit_transform([_normalize_question(row["question"]) for row in rows])
         joblib.dump(
             {"vectorizer": vectorizer, "matrix": matrix, "rows": rows},
             MODELS_DIR / "qa_retrieval.joblib",
@@ -239,7 +254,7 @@ def predict(capability: str) -> dict:
         samples = _read_csv(DATA_DIR / "predict_questions.csv")
         predictions = []
         for row in samples:
-            query = store["vectorizer"].transform(["".join(row["question"].split())])
+            query = store["vectorizer"].transform([_normalize_question(row["question"])])
             scores = cosine_similarity(query, store["matrix"])[0]
             best_index = int(np.argmax(scores))
             answer = store["rows"][best_index]["answer"]

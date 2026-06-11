@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from app.ml import engine
+from app.ml import engine, sensor_model
 from app.ml.base import MLDataError
 from app.models import ProjectCreateRequest, ProjectInfo, ProjectWorkspace
 
@@ -98,8 +98,12 @@ class ProjectService:
         self._write_dataset_json(info, engine.QA_PAIRS_FILE, cleaned)
 
     def save_sensor_csv(self, info: ProjectInfo, raw_csv: str) -> None:
+        # Validate at save time so problems (full-width commas, missing rows) surface
+        # in step 1 with a clear message instead of a confusing failure at train time.
+        normalized = sensor_model.normalize_csv_text(raw_csv)
+        sensor_model.parse_sensor_csv(normalized)
         path = self.dataset_dir(info.project_id) / engine.SENSOR_CSV_FILE
-        path.write_text(raw_csv.strip() + "\n", encoding="utf-8")
+        path.write_text(normalized.strip() + "\n", encoding="utf-8")
         self._touch(info)
 
     def save_ocr_text(self, info: ProjectInfo, correct_text: str, observed_sample: str) -> None:

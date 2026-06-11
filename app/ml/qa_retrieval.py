@@ -14,9 +14,42 @@ MIN_PAIRS = 3
 LOW_CONFIDENCE_THRESHOLD = 0.15
 FALLBACK_ANSWER = "这个问题我还没有学过，请换一个问题试试。"
 
+# Interrogative filler words shared by almost every question ("什么是昆曲" vs
+# "今天午饭吃什么") inflate char-ngram similarity between unrelated questions.
+# Longer words must come first so "为什么" is removed before "什么".
+QUESTION_STOPWORDS = [
+    "为什么",
+    "怎么样",
+    "什么",
+    "怎样",
+    "怎么",
+    "如何",
+    "哪些",
+    "哪个",
+    "哪里",
+    "请问",
+    "一下",
+    "是",
+    "的",
+    "吗",
+    "呢",
+    "啊",
+    "？",
+    "?",
+]
+
 
 def _strip_spaces(text: str) -> str:
     return "".join(text.split())
+
+
+def _normalize_question(text: str) -> str:
+    stripped = _strip_spaces(text)
+    normalized = stripped
+    for word in QUESTION_STOPWORDS:
+        normalized = normalized.replace(word, "")
+    # A question made only of stopwords would vanish; keep the original then.
+    return normalized or stripped
 
 
 def train(pairs: list[dict[str, str]], models_dir: Path) -> dict[str, Any]:
@@ -30,8 +63,9 @@ def train(pairs: list[dict[str, str]], models_dir: Path) -> dict[str, Any]:
 
     # Plain "char" on whitespace-stripped text: "char_wb" pads words with spaces,
     # and that shared space n-gram makes totally unrelated questions look similar.
+    # Question normalization must stay in sync with the exported ai_runtime/core.py.
     vectorizer = TfidfVectorizer(analyzer="char", ngram_range=(1, 3))
-    matrix = vectorizer.fit_transform([_strip_spaces(pair["question"]) for pair in cleaned])
+    matrix = vectorizer.fit_transform([_normalize_question(pair["question"]) for pair in cleaned])
 
     models_dir.mkdir(parents=True, exist_ok=True)
     # Key name "rows" matches the exported ai_runtime/core.py, so the bundled model
@@ -59,7 +93,7 @@ def predict(models_dir: Path, question: str) -> dict[str, Any]:
         raise MLDataError("还没有训练模型，请先完成“训练模型”这一步。")
     store = joblib.load(model_path)
 
-    query = store["vectorizer"].transform([_strip_spaces(question)])
+    query = store["vectorizer"].transform([_normalize_question(question)])
     scores = cosine_similarity(query, store["matrix"])[0]
     ranked = np.argsort(scores)[::-1][:3]
     matches = [

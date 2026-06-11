@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 HardwareTarget = Literal[
@@ -113,6 +113,13 @@ class ProjectCreateRequest(BaseModel):
     student_name: str = Field(default="", max_length=80)
     target_hardware: HardwareTarget = "unihiker_m10"
     dataset_notes: str = Field(default="", max_length=1000)
+
+    # Strip before min_length so a name of pure spaces fails validation
+    # instead of creating a project card with a blank title.
+    @field_validator("project_name", "student_name", mode="before")
+    @classmethod
+    def _strip_text(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
 
 
 class GenerationResult(BaseModel):

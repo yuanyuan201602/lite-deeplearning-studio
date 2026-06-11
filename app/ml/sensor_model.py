@@ -14,8 +14,14 @@ MIN_ROWS = 4
 TREE_MAX_DEPTH = 4
 
 
+def normalize_csv_text(raw_csv: str) -> str:
+    """Chinese IMEs produce full-width punctuation; students paste it without noticing."""
+    return raw_csv.replace("，", ",").replace("；", ",")
+
+
 def parse_sensor_csv(raw_csv: str) -> tuple[list[str], list[list[float]], list[str]]:
     """Parse student CSV: header row, numeric feature columns, last column is the action label."""
+    raw_csv = normalize_csv_text(raw_csv)
     rows = [row for row in csv.reader(StringIO(raw_csv.strip())) if any(cell.strip() for cell in row)]
     if len(rows) < 1 + MIN_ROWS:
         raise MLDataError(f"数据太少：第一行是表头，下面至少要有 {MIN_ROWS} 行数据。")

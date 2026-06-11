@@ -379,6 +379,12 @@ function renderTrainReport(report) {
     facts.appendChild(reportFact("交叉验证准确率", percent(report.cross_val_accuracy)));
   }
   card.appendChild(facts);
+  if (report.cross_val_accuracy) {
+    const note = el("p", "report-classes");
+    note.textContent =
+      "交叉验证准确率：把数据分成几份，轮流留一份当考题考模型，算出的平均分。它比训练准确率更接近模型遇到新数据时的真实水平。";
+    card.appendChild(note);
+  }
   if (report.class_counts && Object.keys(report.class_counts).length) {
     const list = el("p", "report-classes");
     list.textContent =

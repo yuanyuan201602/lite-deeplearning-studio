@@ -135,6 +135,14 @@ def create_api_router(
     @router.post("/{project_id}/export")
     def export(project_id: str) -> dict:
         info, task = load_project(project_id)
+        # Gate only the student-facing route: without it a fresh project exports a
+        # zip whose models/ is empty and predict.py crashes at the competition.
+        # Service-level export stays open for teacher template packages
+        # (run.py in the package trains on the bundled sample data).
+        if info.train_report is None:
+            raise MLDataError(
+                "还没有训练模型，材料包里会缺少模型文件。请先完成「训练模型」这一步再导出。"
+            )
         export_path, generated_files = export_service.export_project(
             info, task, project_service
         )
