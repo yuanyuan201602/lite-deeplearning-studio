@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}{{ info.project_name }} · {{ app_title }}{% endblock %}
+
+{% block content %}
+  <nav class="crumbs"><a href="/">首页</a> / {{ competition.title }} / {{ info.project_name }}</nav>
+
+  <section class="project-head">
+    <div>
+      <p class="eyebrow">{{ competition.title }} · {{ task.group }}</p>
+      <h1>{{ info.project_name }}</h1>
+      <p class="intro-copy">{{ task.title }}{% if info.student_name %} · {{ info.student_name }}{% endif %}</p>
+    </div>
+    <div class="hardware-chip">{{ hardware_labels[info.target_hardware] }}</div>
+  </section>
+
+  <nav class="stepper" id="stepper">
+    {% for step in step_labels %}
+      <button class="step" data-step="{{ loop.index0 }}" type="button">
+        <span class="step-num">{{ loop.index }}</span>
+        <span class="step-name">{{ step }}</span>
+        <span class="step-check" hidden>✓</span>
+      </button>
+    {% endfor %}
+  </nav>
+
+  <section class="panel" id="panel-0">
+    <div class="panel-head">
+      <h2>{{ step_labels[0] }}</h2>
+      <p class="panel-hint" id="data-hint"></p>
+    </div>
+    <div id="data-editor"></div>
+    <div class="panel-actions">
+      <button class="btn-primary" id="save-data" type="button">保存数据</button>
+      <span class="status-text" id="data-status"></span>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-1" hidden>
+    <div class="panel-head">
+      <h2>{{ step_labels[1] }}</h2>
+      <p class="panel-hint" id="train-hint">点击按钮，电脑会从你的数据中学习规律。数据越多越准确。</p>
+    </div>
+    <div class="panel-actions">
+      <button class="btn-primary" id="train-button" type="button">开始训练</button>
+      <span class="status-text" id="train-status"></span>
+    </div>
+    <div id="train-report"></div>
+  </section>
+
+  <section class="panel" id="panel-2" hidden>
+    <div class="panel-head">
+      <h2>{{ step_labels[2] }}</h2>
+      <p class="panel-hint" id="test-hint">用一条新数据试试模型学得怎么样。</p>
+    </div>
+    <div id="test-area"></div>
+    <div id="test-result"></div>
+  </section>
+
+  <section class="panel" id="panel-3" hidden>
+    <div class="panel-head">
+      <h2>{{ step_labels[3] }}</h2>
+      <p class="panel-hint">
+        导出包里有：训练好的模型、全部数据、可运行的 Python 程序、{{ hardware_labels[info.target_hardware] }}部署说明和比赛提交清单。
+      </p>
+    </div>
+    <div class="panel-actions">
+      <button class="btn-primary" id="export-button" type="button">导出比赛材料包</button>
+      <span class="status-text" id="export-status"></span>
+    </div>
+    <div id="export-result"></div>
+  </section>
+
+  <script id="initial-state" type="application/json">{{ initial_state_json | safe }}</script>
+  <script src="{{ url_for('static', path='/app.js') }}"></script>
+{% endblock %}

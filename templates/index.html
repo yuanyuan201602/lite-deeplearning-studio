@@ -1,17 +1,42 @@
 {% extends "base.html" %}
 
-{% block title %}任务工作流{% endblock %}
+{% block title %}{{ app_title }} · 首页{% endblock %}
 
 {% block content %}
-  <section class="intro">
-    <div>
-      <p class="eyebrow">学生竞赛任务生成器</p>
-      <h1>{{ app_intro | default("选择一个任务，生成可运行的比赛材料。") }}</h1>
+  <section class="hero">
+    <div class="hero-text">
+      <p class="eyebrow">K12 学生机器学习工作台</p>
+      <h1>{{ app_intro }}</h1>
+      <p class="hero-copy">
+        四步完成一个 AI 项目：<strong>准备数据 → 训练模型 → 测试效果 → 导出材料</strong>。
+        不用写代码就能训练自己的模型，导出包可直接用于比赛提交和行空板 M10 部署。
+      </p>
     </div>
-    <p class="intro-copy">
-      默认走轻量流程：填少量信息，生成脚本、Notebook、行空板 M10 + DFRobot 外设说明和导出包。
-    </p>
+    <ol class="hero-steps">
+      <li><span class="step-dot">1</span>准备数据</li>
+      <li><span class="step-dot">2</span>训练模型</li>
+      <li><span class="step-dot">3</span>测试效果</li>
+      <li><span class="step-dot">4</span>导出材料</li>
+    </ol>
   </section>
+
+  {% if recent_projects %}
+    <section class="recent">
+      <h2>继续我的项目</h2>
+      <div class="recent-grid">
+        {% for project in recent_projects %}
+          <a class="recent-card" href="/project/{{ project.project_id }}">
+            <h3>{{ project.project_name }}</h3>
+            <p>
+              {% if project.train_report %}已训练{% else %}未训练{% endif %}
+              {% if project.export_file %} · 已导出{% endif %}
+            </p>
+            <span class="recent-time">{{ project.updated_at | replace("T", " ") }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
 
   <section class="competition-list">
     {% for competition in competitions %}
@@ -23,10 +48,10 @@
         <div class="task-grid">
           {% for task in competition.tasks %}
             <a class="task-card" href="/workflow/{{ competition.slug }}/{{ task.slug }}">
-              <span class="task-label">工作流</span>
+              <span class="task-label">{{ task.group }}</span>
               <h3>{{ task.title }}</h3>
               <p>{{ task.summary }}</p>
-              <span class="task-action">开始</span>
+              <span class="task-action">开始项目</span>
             </a>
           {% endfor %}
         </div>
