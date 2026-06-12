@@ -24,7 +24,7 @@ python --version
 从 GitHub 下载源码 zip，或克隆仓库：
 
 ```bash
-git clone https://github.com/<your-org>/lite-deeplearning-studio.git
+git clone https://github.com/yuanyuan201602/lite-deeplearning-studio.git
 cd lite-deeplearning-studio
 ```
 

@@ -61,6 +61,11 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_OUTPUT_DIR / DEFAULT_RELEASE_NAME,
         help="Release zip path. Default: dist/lite-deeplearning-studio-source.zip",
     )
+    parser.add_argument(
+        "--require-pretrained",
+        action="store_true",
+        help="Fail if pretrained ONNX models are missing from models_pretrained/.",
+    )
     return parser.parse_args()
 
 
@@ -100,9 +105,25 @@ def build_release(output_path: Path) -> Path:
     return output_path
 
 
+_PRETRAINED_MODELS = ["mobilenetv2.onnx", "ssd_mobilenet.onnx"]
+
+
+def report_pretrained_status(require: bool) -> None:
+    pretrained_dir = PROJECT_ROOT / "models_pretrained"
+    present = [f for f in _PRETRAINED_MODELS if (pretrained_dir / f).is_file()]
+    missing = [f for f in _PRETRAINED_MODELS if f not in present]
+    if present:
+        print(f"预训练模型（预训练增强版）: {', '.join(present)}")
+    if missing:
+        print(f"缺少预训练模型（基础模式版）: {', '.join(missing)}")
+        if require:
+            raise SystemExit("--require-pretrained: 预训练模型缺失，打包中止。")
+
+
 def main() -> None:
     args = parse_args()
     ensure_pretrained_models()
+    report_pretrained_status(require=args.require_pretrained)
     output_path = build_release(args.output)
     print(f"Release zip written to {output_path}")
 

@@ -1,14 +1,14 @@
 {
   "rounds": 1,
   "require_ai": false,
-  "with_web": true,
+  "with_web": false,
   "edition": "all",
   "checks": [
     {
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_face_intro",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-k_d5ytlj/round-1/projects/1-0c2fb7db/exports/1-0c2fb7db.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-sbi3s913/round-1/projects/1-e142ff74/exports/1-e142ff74.zip",
       "passed": true,
       "failures": []
     },
@@ -16,7 +16,7 @@
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_ocr_typo",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-k_d5ytlj/round-1/projects/1-a500edb4/exports/1-a500edb4.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-sbi3s913/round-1/projects/1-098188fb/exports/1-098188fb.zip",
       "passed": true,
       "failures": []
     },
@@ -24,7 +24,7 @@
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_text_classifier",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-k_d5ytlj/round-1/projects/1-675530d4/exports/1-675530d4.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-sbi3s913/round-1/projects/1-d4a6387f/exports/1-d4a6387f.zip",
       "passed": true,
       "failures": []
     },
@@ -32,7 +32,7 @@
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_sentence_classifier",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-k_d5ytlj/round-1/projects/1-2a96258a/exports/1-2a96258a.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-sbi3s913/round-1/projects/1-a408c7ee/exports/1-a408c7ee.zip",
       "passed": true,
       "failures": []
     },
@@ -40,7 +40,7 @@
       "round": 1,
       "competition": "smart_museum",
       "task": "heritage_qa_helper",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-k_d5ytlj/round-1/projects/1-3d226c87/exports/1-3d226c87.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-sbi3s913/round-1/projects/1-52b621f8/exports/1-52b621f8.zip",
       "passed": true,
       "failures": []
     },
@@ -48,7 +48,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "image_recognition_starter",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-k_d5ytlj/round-1/projects/1-336e9ae2/exports/1-336e9ae2.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-sbi3s913/round-1/projects/1-2bfe8f7d/exports/1-2bfe8f7d.zip",
       "passed": true,
       "failures": []
     },
@@ -56,7 +56,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "sensor_decision_template",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-k_d5ytlj/round-1/projects/1-bb34a79a/exports/1-bb34a79a.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-sbi3s913/round-1/projects/1-99e95ab9/exports/1-99e95ab9.zip",
       "passed": true,
       "failures": []
     },
@@ -64,7 +64,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "primary_voice_image_interaction",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-k_d5ytlj/round-1/projects/1-3c66b833/exports/1-3c66b833.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-sbi3s913/round-1/projects/1-bae29649/exports/1-bae29649.zip",
       "passed": true,
       "failures": []
     },
@@ -72,7 +72,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "junior_model_calling_workflow",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-k_d5ytlj/round-1/projects/1-d4e39231/exports/1-d4e39231.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-sbi3s913/round-1/projects/1-d1d394a2/exports/1-d1d394a2.zip",
       "passed": true,
       "failures": []
     },
@@ -80,7 +80,7 @@
       "round": 1,
       "competition": "future_creator",
       "task": "senior_llm_vision_motion",
-      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-k_d5ytlj/round-1/projects/1-839fe8e5/exports/1-839fe8e5.zip",
+      "export_path": "/var/folders/j1/9cft056j0fb1fsfcf_wn2pnr0000gn/T/lds-acceptance-sbi3s913/round-1/projects/1-471f3c9c/exports/1-471f3c9c.zip",
       "passed": true,
       "failures": []
     },
@@ -95,83 +95,6 @@
       "round": 1,
       "competition": "future_creator",
       "task": "__platform_coverage__",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "__all__",
-      "task": "__homepage__",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "smart_museum",
-      "task": "heritage_face_intro",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "smart_museum",
-      "task": "heritage_ocr_typo",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "smart_museum",
-      "task": "heritage_text_classifier",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "smart_museum",
-      "task": "heritage_sentence_classifier",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "smart_museum",
-      "task": "heritage_qa_helper",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "future_creator",
-      "task": "image_recognition_starter",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "future_creator",
-      "task": "sensor_decision_template",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "future_creator",
-      "task": "primary_voice_image_interaction",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "future_creator",
-      "task": "junior_model_calling_workflow",
-      "passed": true,
-      "failures": []
-    },
-    {
-      "round": "web",
-      "competition": "future_creator",
-      "task": "senior_llm_vision_motion",
       "passed": true,
       "failures": []
     }
