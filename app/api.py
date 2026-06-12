@@ -4,6 +4,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.ml import engine
 from app.ml.base import MLDataError
 from app.models import ProjectInfo, TaskDefinition
 from app.services.export_service import ExportService
@@ -33,6 +34,10 @@ class PredictPayload(BaseModel):
     values: dict[str, str] = Field(default_factory=dict)
 
 
+class TrainPayload(BaseModel):
+    classifier: str = Field(default="", max_length=40)
+
+
 class ImageLabelPayload(BaseModel):
     label: str = Field(min_length=1, max_length=40)
 
@@ -59,6 +64,7 @@ def create_api_router(
             "dataset": project_service.dataset_summary(info, task.sample_dataset_kind),
             "capability": task.ai_capability,
             "dataset_kind": task.sample_dataset_kind,
+            "model_choices": engine.list_model_choices(task.ai_capability),
         }
 
     @router.get("/{project_id}/state")
@@ -129,12 +135,19 @@ def create_api_router(
         return project_state(info, task)
 
     @router.post("/{project_id}/train")
-    def train(project_id: str) -> dict:
+    def train(project_id: str, payload: TrainPayload | None = None) -> dict:
         info, task = load_project(project_id)
-        report = project_service.train(info, task.ai_capability)
+        model_choice = payload.classifier if payload else ""
+        report = project_service.train(info, task.ai_capability, model_choice or None)
         state = project_state(info, task)
         state["report"] = report
         return state
+
+    @router.post("/{project_id}/train/compare")
+    def train_compare(project_id: str) -> dict:
+        info, task = load_project(project_id)
+        rows = project_service.compare_models(info, task.ai_capability)
+        return {"rows": rows}
 
     @router.post("/{project_id}/predict")
     def predict(project_id: str, payload: PredictPayload) -> dict:

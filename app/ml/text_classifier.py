@@ -4,29 +4,29 @@ from pathlib import Path
 from typing import Any
 
 import joblib
-import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.pipeline import Pipeline
 
+from app.ml import classifiers
 from app.ml.base import MODEL_FILE, MLDataError, class_counts, now_text, write_model_meta
 
 MIN_SAMPLES_PER_CLASS = 2
-CROSS_VAL_MIN_PER_CLASS = 3
+
+MODEL_CHOICES = classifiers.TEXT_CHOICES
+DEFAULT_MODEL = "logistic_regression"
 
 
-def build_pipeline() -> Pipeline:
+def build_pipeline(model_choice: str = DEFAULT_MODEL, sample_count: int = 0) -> Pipeline:
     # char_wb n-grams work for Chinese text without needing a tokenizer.
     return Pipeline(
         [
             ("tfidf", TfidfVectorizer(analyzer="char_wb", ngram_range=(1, 3))),
-            ("clf", LogisticRegression(max_iter=1000)),
+            ("clf", classifiers.make_classifier(model_choice, sample_count)),
         ]
     )
 
 
-def train(samples: list[dict[str, str]], models_dir: Path) -> dict[str, Any]:
+def _prepare(samples: list[dict[str, str]]) -> tuple[list[str], list[str], dict[str, int]]:
     texts = [sample["text"].strip() for sample in samples if sample["text"].strip()]
     labels = [sample["label"].strip() for sample in samples if sample["text"].strip()]
     if len(set(labels)) < 2:
@@ -37,11 +37,23 @@ def train(samples: list[dict[str, str]], models_dir: Path) -> dict[str, Any]:
         raise MLDataError(
             f"这些类别的例句太少：{('、'.join(thin_classes))}。每个类别至少要 {MIN_SAMPLES_PER_CLASS} 条。"
         )
+    return texts, labels, counts
 
-    model = build_pipeline()
+
+def train(
+    samples: list[dict[str, str]],
+    models_dir: Path,
+    model_choice: str | None = None,
+) -> dict[str, Any]:
+    choice = classifiers.resolve_choice(model_choice, MODEL_CHOICES, DEFAULT_MODEL)
+    texts, labels, counts = _prepare(samples)
+
+    model = build_pipeline(choice, len(texts))
     model.fit(texts, labels)
     train_accuracy = float(model.score(texts, labels))
-    cross_val_accuracy = _cross_val_accuracy(texts, labels, counts)
+    cross_val_accuracy = classifiers.cross_val_accuracy(
+        lambda: build_pipeline(choice, len(texts)), texts, labels, counts
+    )
 
     models_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, models_dir / MODEL_FILE)
@@ -52,10 +64,24 @@ def train(samples: list[dict[str, str]], models_dir: Path) -> dict[str, Any]:
         "class_counts": counts,
         "train_accuracy": train_accuracy,
         "cross_val_accuracy": cross_val_accuracy,
+        "model_choice": choice,
+        "model_name": classifiers.CLASSIFIER_INFO[choice]["name"],
         "trained_at": now_text(),
     }
     write_model_meta(models_dir, meta)
     return meta
+
+
+def compare(samples: list[dict[str, str]]) -> list[dict[str, Any]]:
+    texts, labels, counts = _prepare(samples)
+    return classifiers.compare_rows(
+        MODEL_CHOICES,
+        DEFAULT_MODEL,
+        lambda choice: build_pipeline(choice, len(texts)),
+        texts,
+        labels,
+        counts,
+    )
 
 
 def predict(models_dir: Path, text: str) -> dict[str, Any]:
@@ -81,21 +107,3 @@ def _probability_scores(model: Pipeline, text: str) -> dict[str, float]:
         str(label): round(float(probability), 4)
         for label, probability in zip(model.classes_, probabilities)
     }
-
-
-def _cross_val_accuracy(
-    texts: list[str],
-    labels: list[str],
-    counts: dict[str, int],
-) -> float | None:
-    min_count = min(counts.values())
-    if min_count < CROSS_VAL_MIN_PER_CLASS:
-        return None
-    folds = min(3, min_count)
-    scores = cross_val_score(
-        build_pipeline(),
-        texts,
-        labels,
-        cv=StratifiedKFold(n_splits=folds, shuffle=True, random_state=7),
-    )
-    return float(np.mean(scores))

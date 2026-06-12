@@ -45,10 +45,13 @@
       <h2>{{ step_labels[1] }}</h2>
       <p class="panel-hint" id="train-hint">点击按钮，电脑会从你的数据中学习规律。数据越多越准确。</p>
     </div>
+    <div id="model-picker"></div>
     <div class="panel-actions">
       <button class="btn-primary" id="train-button" type="button">开始训练</button>
+      <button class="btn-secondary" id="compare-button" type="button" hidden>对比所有模型</button>
       <span class="status-text" id="train-status"></span>
     </div>
+    <div id="compare-result"></div>
     <div id="train-report"></div>
   </section>
 

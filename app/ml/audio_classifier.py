@@ -7,9 +7,9 @@ from typing import Any
 
 import joblib
 import numpy as np
-from sklearn.linear_model import LogisticRegression
 
-from app.ml.base import MODEL_FILE, MLDataError, now_text, write_model_meta
+from app.ml import classifiers
+from app.ml.base import MODEL_FILE, MLDataError, class_counts, now_text, write_model_meta
 
 # Feature extraction must stay in sync with the exported ai_runtime/core.py so the
 # in-app trained model keeps working inside the exported package.
@@ -21,6 +21,9 @@ MIN_SECONDS = 0.3
 MAX_SECONDS = 10.0
 MAX_AUDIO_BYTES = 10 * 1024 * 1024
 MIN_CLIPS_PER_CLASS = 2
+
+MODEL_CHOICES = classifiers.DENSE_CHOICES
+DEFAULT_MODEL = "logistic_regression"
 
 
 def _decode_wav(data: bytes) -> np.ndarray:
@@ -85,7 +88,9 @@ def audio_features(data: bytes) -> list[float]:
     return features.tolist()
 
 
-def train(labeled_clips: dict[str, list[bytes]], models_dir: Path) -> dict[str, Any]:
+def _prepare_features(
+    labeled_clips: dict[str, list[bytes]],
+) -> tuple[list[list[float]], list[str]]:
     usable = {label: clips for label, clips in labeled_clips.items() if clips}
     if len(usable) < 2:
         raise MLDataError("至少需要 2 个类别的声音才能训练，请先给每个类别录几段声音。")
@@ -103,24 +108,53 @@ def train(labeled_clips: dict[str, list[bytes]], models_dir: Path) -> dict[str, 
         for data in clips:
             features.append(audio_features(data))
             labels.append(label)
+    return features, labels
 
-    model = LogisticRegression(max_iter=1000)
+
+def train(
+    labeled_clips: dict[str, list[bytes]],
+    models_dir: Path,
+    model_choice: str | None = None,
+) -> dict[str, Any]:
+    choice = classifiers.resolve_choice(model_choice, MODEL_CHOICES, DEFAULT_MODEL)
+    features, labels = _prepare_features(labeled_clips)
+    counts = class_counts(labels)
+
+    model = classifiers.make_classifier(choice, len(labels))
     model.fit(features, labels)
     train_accuracy = float(model.score(features, labels))
+    cross_val_accuracy = classifiers.cross_val_accuracy(
+        lambda: classifiers.make_classifier(choice, len(labels)), features, labels, counts
+    )
 
     models_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, models_dir / MODEL_FILE)
     meta = {
         "capability": "audio_classifier",
-        "labels": sorted(usable),
+        "labels": sorted(counts),
         "sample_count": len(labels),
-        "class_counts": {label: len(clips) for label, clips in usable.items()},
+        "class_counts": counts,
         "train_accuracy": train_accuracy,
-        "cross_val_accuracy": None,
+        "cross_val_accuracy": cross_val_accuracy,
+        "model_choice": choice,
+        "model_name": classifiers.CLASSIFIER_INFO[choice]["name"],
         "trained_at": now_text(),
     }
     write_model_meta(models_dir, meta)
     return meta
+
+
+def compare(labeled_clips: dict[str, list[bytes]]) -> list[dict[str, Any]]:
+    features, labels = _prepare_features(labeled_clips)
+    counts = class_counts(labels)
+    return classifiers.compare_rows(
+        MODEL_CHOICES,
+        DEFAULT_MODEL,
+        lambda choice: classifiers.make_classifier(choice, len(labels)),
+        features,
+        labels,
+        counts,
+    )
 
 
 def predict(models_dir: Path, audio_bytes: bytes) -> dict[str, Any]:

@@ -559,7 +559,11 @@ function afterDataSaved(message) {
 /* ---------- training ---------- */
 
 const trainButton = document.getElementById("train-button");
+const compareButton = document.getElementById("compare-button");
+const compareResult = document.getElementById("compare-result");
 const trainReport = document.getElementById("train-report");
+const modelPicker = document.getElementById("model-picker");
+let selectedClassifier = "";
 
 if (capability === "ocr_typo_checker") {
   document.getElementById("train-hint").textContent =
@@ -567,11 +571,55 @@ if (capability === "ocr_typo_checker") {
   trainButton.textContent = "保存正确文字";
 }
 
+function buildModelPicker() {
+  const choices = state.model_choices || [];
+  if (!choices.length) return;
+  compareButton.hidden = false;
+  document.getElementById("train-hint").textContent =
+    "先选一个模型再训练。不确定选哪个？点「对比所有模型」，用同一份数据让它们比一场。";
+
+  const heading = el("p", "field-label", "选择模型");
+  const grid = el("div", "model-grid");
+  for (const choice of choices) {
+    const card = el("div", "model-card");
+    card.dataset.slug = choice.slug;
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    const head = el("div", "model-card-head");
+    head.appendChild(el("strong", "", choice.name));
+    head.appendChild(el("span", "model-school", choice.school));
+    card.appendChild(head);
+    card.appendChild(el("p", "model-principle", choice.principle));
+    const meta = el("ul", "model-meta");
+    meta.appendChild(el("li", "model-pro", `优点：${choice.strengths}`));
+    meta.appendChild(el("li", "model-con", `局限：${choice.weaknesses}`));
+    meta.appendChild(el("li", "model-fit", `适合：${choice.best_for}`));
+    card.appendChild(meta);
+    const select = () => {
+      selectedClassifier = choice.slug;
+      grid.querySelectorAll(".model-card").forEach((node) =>
+        node.classList.toggle("selected", node === card)
+      );
+    };
+    card.addEventListener("click", select);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") select();
+    });
+    if (choice.default && !selectedClassifier) {
+      selectedClassifier = choice.slug;
+      card.classList.add("selected");
+    }
+    grid.appendChild(card);
+  }
+  modelPicker.append(heading, grid);
+}
+buildModelPicker();
+
 trainButton.addEventListener("click", async () => {
   trainButton.disabled = true;
   setStatus("train-status", "正在训练，请稍候……", false);
   try {
-    const next = await postJson("/train", {});
+    const next = await postJson("/train", { classifier: selectedClassifier });
     Object.assign(state, { project: next.project, dataset: next.dataset });
     renderTrainReport(next.report);
     stepsDone[1] = true;
@@ -583,6 +631,57 @@ trainButton.addEventListener("click", async () => {
     trainButton.disabled = false;
   }
 });
+
+compareButton.addEventListener("click", async () => {
+  compareButton.disabled = true;
+  setStatus("train-status", "正在用同一份数据训练所有模型……", false);
+  try {
+    const result = await postJson("/train/compare", {});
+    renderCompareTable(result.rows);
+    setStatus("train-status", "对比完成。点中意的模型卡片，再点「开始训练」正式训练。", false);
+  } catch (error) {
+    setStatus("train-status", error.message, true);
+  } finally {
+    compareButton.disabled = false;
+  }
+});
+
+function renderCompareTable(rows) {
+  compareResult.innerHTML = "";
+  if (!rows || !rows.length) return;
+  const card = el("div", "report-card");
+  card.appendChild(el("p", "field-label", "同一份数据，不同模型的成绩单"));
+  const table = el("table", "compare-table");
+  const head = el("tr");
+  for (const text of ["模型", "训练准确率", "交叉验证", "训练耗时"]) {
+    head.appendChild(el("th", "", text));
+  }
+  table.appendChild(head);
+
+  const best = rows.reduce((acc, row) =>
+    (row.cross_val_accuracy ?? -1) > (acc.cross_val_accuracy ?? -1) ? row : acc
+  );
+  for (const row of rows) {
+    const tr = el("tr");
+    const isBest = row === best && row.cross_val_accuracy !== null;
+    tr.appendChild(el("td", "", `${isBest ? "★ " : ""}${row.name}`));
+    tr.appendChild(el("td", "", percent(row.train_accuracy)));
+    tr.appendChild(
+      el("td", "", row.cross_val_accuracy === null ? "数据不够" : percent(row.cross_val_accuracy))
+    );
+    tr.appendChild(el("td", "", `${row.train_ms} 毫秒`));
+    if (isBest) tr.classList.add("compare-best");
+    table.appendChild(tr);
+  }
+  card.appendChild(table);
+  const note = el("p", "report-classes");
+  note.textContent =
+    "★ 是交叉验证最高的模型。交叉验证比训练准确率更接近真实水平；" +
+    "如果某个模型训练准确率很高但交叉验证低很多，说明它在“死记硬背”（过拟合）。" +
+    "每类数据满 3 条才能算交叉验证。";
+  card.appendChild(note);
+  compareResult.appendChild(card);
+}
 
 function renderTrainReport(report) {
   trainReport.innerHTML = "";
@@ -599,11 +698,22 @@ function renderTrainReport(report) {
   if (report.cross_val_accuracy) {
     facts.appendChild(reportFact("交叉验证准确率", percent(report.cross_val_accuracy)));
   }
+  if (report.model_name) {
+    facts.appendChild(reportFact("使用模型", report.model_name));
+  }
   card.appendChild(facts);
   if (report.cross_val_accuracy) {
     const note = el("p", "report-classes");
     note.textContent =
       "交叉验证准确率：把数据分成几份，轮流留一份当考题考模型，算出的平均分。它比训练准确率更接近模型遇到新数据时的真实水平。";
+    card.appendChild(note);
+  }
+  if (report.feature_mode) {
+    const note = el("p", "report-classes");
+    note.textContent =
+      report.feature_mode === "mobilenet_v2"
+        ? "特征提取：MobileNet 迁移学习——用在上百万张图片上预训练好的网络理解你的图片，少量样本也能学得稳。"
+        : "特征提取：原始像素（基础模式）。让老师运行 python scripts/download_pretrained.py 可升级为 MobileNet 迁移学习。";
     card.appendChild(note);
   }
   if (report.class_counts && Object.keys(report.class_counts).length) {
@@ -622,6 +732,14 @@ function renderTrainReport(report) {
     pre.textContent = report.rules_text;
     details.appendChild(pre);
     card.appendChild(details);
+  }
+  if (report.feature_importances) {
+    const ranked = Object.entries(report.feature_importances).sort((a, b) => b[1] - a[1]);
+    const list = el("p", "report-classes");
+    list.textContent =
+      "模型眼中各传感器的重要程度：" +
+      ranked.map(([name, value]) => `${name} ${Math.round(value * 100)}%`).join("，");
+    card.appendChild(list);
   }
   trainReport.appendChild(card);
 }
