@@ -10,22 +10,26 @@
     <h1>目标检测体验</h1>
     <p class="intro-copy">
       图像分类回答"这张图是什么"，目标检测回答"东西在图里的哪个位置"。
-      上传一张有人物的照片，AI 会找到每张人脸并画框——这就是检测框（bounding box）。
+      上传一张照片，AI 会找到图里的目标并画框——这就是检测框（bounding box）。
     </p>
   </section>
 
-  {% if not detector_available %}
+  {% if detect_engine == "ssd" %}
+    <p class="status-ok">当前使用 SSD-MobileNet 预训练模型，可以认出人、动物、日用品等 80 类物体。</p>
+  {% elif detect_engine == "haar" %}
+    <p class="panel-hint">当前是人脸检测基础模式。{{ install_hint }}</p>
+  {% else %}
     <p class="form-error">{{ install_hint }}</p>
   {% endif %}
 
   <section class="panel">
     <div class="panel-head">
       <h2>上传照片试试</h2>
-      <p class="panel-hint">支持 PNG / JPG。照片里的人脸越清晰、越正对镜头，越容易被找到。</p>
+      <p class="panel-hint">支持 PNG / JPG。目标越清晰、越完整，越容易被找到。</p>
     </div>
     <input type="file" id="detect-file" accept="image/*" />
     <div class="panel-actions">
-      <button class="btn-primary" id="detect-button" type="button">找出照片里的人脸</button>
+      <button class="btn-primary" id="detect-button" type="button">找出照片里的目标</button>
       <span class="status-text" id="detect-status"></span>
     </div>
     <canvas id="detect-canvas" class="detect-canvas" hidden></canvas>
@@ -53,7 +57,6 @@
       canvas.height = Math.round(loadedImage.height * scale);
       canvas.hidden = false;
       ctx.drawImage(loadedImage, 0, 0, canvas.width, canvas.height);
-      return scale;
     }
 
     fileInput.addEventListener("change", () => {
@@ -74,7 +77,7 @@
         return;
       }
       detectButton.disabled = true;
-      setStatus("正在寻找人脸……", false);
+      setStatus("正在寻找目标……", false);
       try {
         const form = new FormData();
         form.append("file", fileInput.files[0]);
@@ -85,22 +88,28 @@
         const ratio = canvas.width / data.width;
         ctx.lineWidth = 3;
         ctx.strokeStyle = "#d97757";
-        ctx.fillStyle = "#d97757";
-        ctx.font = "14px sans-serif";
+        ctx.font = "bold 14px sans-serif";
         for (const box of data.boxes) {
           const x = box.x * ratio;
           const y = box.y * ratio;
           const w = box.w * ratio;
           const h = box.h * ratio;
           ctx.strokeRect(x, y, w, h);
-          ctx.fillText(box.label, x + 4, Math.max(14, y - 6));
+          const text = box.score
+            ? `${box.label} ${Math.round(box.score * 100)}%`
+            : box.label;
+          const labelY = Math.max(16, y - 6);
+          ctx.fillStyle = "rgba(31, 30, 29, 0.75)";
+          ctx.fillRect(x, labelY - 14, ctx.measureText(text).width + 8, 18);
+          ctx.fillStyle = "#faf9f5";
+          ctx.fillText(text, x + 4, labelY);
         }
-        setStatus(
-          data.count > 0
-            ? `找到 ${data.count} 张人脸！每个框就是一个检测结果。`
-            : "没有找到人脸。换一张人脸更清晰、更正面的照片试试。",
-          false
-        );
+        const found = data.count > 0
+          ? `找到 ${data.count} 个目标！每个框就是一个检测结果。`
+          : (data.engine === "haar"
+              ? "没有找到人脸。基础模式只认正面人脸，换一张更清晰的照片试试。"
+              : "没有找到目标。换一张主体更清晰的照片试试。");
+        setStatus(found, false);
       } catch (error) {
         setStatus(error.message, true);
       } finally {

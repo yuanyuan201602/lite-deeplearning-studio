@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
-from build_release import iter_release_files
+from build_release import ensure_pretrained_models, iter_release_files
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -414,6 +414,7 @@ def build_installer(output_path: Path, edition: str = "all") -> Path:
 
 def main() -> None:
     args = parse_args()
+    ensure_pretrained_models()
     output_path = build_installer(args.output, args.edition)
     print(f"Student installer written to {output_path}")
 

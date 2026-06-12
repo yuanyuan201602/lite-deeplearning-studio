@@ -17,6 +17,7 @@ INCLUDE_PATHS = [
     "scripts",
     "packaging",
     "tests",
+    "models_pretrained",
     "README.md",
     ".gitignore",
     "pyproject.toml",
@@ -24,6 +25,19 @@ INCLUDE_PATHS = [
     "docker-compose.yml",
     ".dockerignore",
 ]
+
+
+def ensure_pretrained_models() -> None:
+    """Fetch the ONNX models so release/installer zips work offline on student PCs."""
+    import sys
+
+    sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
+    try:
+        from download_pretrained import download_all
+
+        download_all()
+    except Exception as exc:  # network failures must not block packaging
+        print(f"预训练模型下载失败（{exc}），安装包将以基础模式发布。")
 EXCLUDED_DIR_NAMES = {
     "__pycache__",
     ".pytest_cache",
@@ -88,6 +102,7 @@ def build_release(output_path: Path) -> Path:
 
 def main() -> None:
     args = parse_args()
+    ensure_pretrained_models()
     output_path = build_release(args.output)
     print(f"Release zip written to {output_path}")
 

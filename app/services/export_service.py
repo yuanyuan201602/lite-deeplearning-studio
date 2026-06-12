@@ -6,6 +6,7 @@ from io import StringIO
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
+from app.ml import pretrained
 from app.ml.base import MODEL_FILE, MODEL_META_FILE
 from app.models import GenerationRequest, ProjectInfo, ProjectWorkspace, TaskDefinition
 from app.services.project_service import ProjectService
@@ -118,6 +119,16 @@ class ExportService:
             target = target_dir / f"{task.ai_capability}.joblib"
             target.write_bytes(model_path.read_bytes())
             copied.append(target)
+
+        # Image packages carry the MobileNet embedder so the exported run.py/predict.py
+        # extract the same transfer-learning features as the in-app training did.
+        if task.ai_capability == "image_classifier":
+            embedder_path = pretrained.PRETRAINED_DIR / pretrained.IMAGE_EMBEDDER_FILE
+            if embedder_path.is_file():
+                target = target_dir / "pretrained" / pretrained.IMAGE_EMBEDDER_FILE
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(embedder_path.read_bytes())
+                copied.append(target)
         meta_path = models_dir / MODEL_META_FILE
         if meta_path.is_file():
             target = target_dir / MODEL_META_FILE
