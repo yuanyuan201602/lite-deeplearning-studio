@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from app.api import create_api_router, register_ml_error_handler
-from app.ml import object_detector
+from app.ml import engine, object_detector
 from app.models import AppEdition, ProjectCreateRequest
 from app.services.export_service import ExportService
 from app.services.project_service import ProjectService
@@ -141,14 +141,14 @@ def create_app(
             name="playground_detect.html",
             context={
                 **base_context(request),
-                "detector_available": object_detector.is_available(),
+                "detect_engine": object_detector.active_engine(),
                 "install_hint": object_detector.INSTALL_HINT,
             },
         )
 
     @app.post("/api/playground/detect")
     async def detect_api(file: UploadFile = File(...)) -> dict:
-        return object_detector.detect_faces(await file.read())
+        return object_detector.detect(await file.read())
 
     @app.get("/workflow/{competition_slug}/{task_slug}", response_class=HTMLResponse)
     def workflow(request: Request, competition_slug: str, task_slug: str) -> HTMLResponse:
@@ -223,6 +223,7 @@ def create_app(
             "dataset": project_service.dataset_summary(info, task.sample_dataset_kind),
             "capability": task.ai_capability,
             "dataset_kind": task.sample_dataset_kind,
+            "model_choices": engine.list_model_choices(task.ai_capability),
         }
         return templates.TemplateResponse(
             request=request,

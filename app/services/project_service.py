@@ -269,15 +269,21 @@ class ProjectService:
 
     # ----- training and prediction -----
 
-    def train(self, info: ProjectInfo, capability: str) -> dict[str, Any]:
+    def train(
+        self, info: ProjectInfo, capability: str, model_choice: str | None = None
+    ) -> dict[str, Any]:
         report = engine.train_capability(
             capability,
             self.dataset_dir(info.project_id),
             self.models_dir(info.project_id),
+            model_choice,
         )
         info.train_report = report
         self._save_info(info)
         return report
+
+    def compare_models(self, info: ProjectInfo, capability: str) -> list[dict[str, Any]]:
+        return engine.compare_capability(capability, self.dataset_dir(info.project_id))
 
     def predict(self, info: ProjectInfo, capability: str, payload: dict[str, Any]) -> dict[str, Any]:
         return engine.predict_capability(capability, self.models_dir(info.project_id), payload)

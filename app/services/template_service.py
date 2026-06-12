@@ -202,10 +202,14 @@ def train(capability: str) -> None:
         model.fit([row["text"] for row in rows], [row["label"] for row in rows])
         joblib.dump(model, MODELS_DIR / "text_classifier.joblib")
     elif capability == "image_classifier":
-        features, labels = _load_image_dataset(DATA_DIR / "images")
-        model = LogisticRegression(max_iter=500)
+        feature_mode = _active_image_feature_mode()
+        features, labels = _load_image_dataset(DATA_DIR / "images", feature_mode)
+        model = LogisticRegression(max_iter=1000)
         model.fit(features, labels)
-        joblib.dump(model, MODELS_DIR / "image_classifier.joblib")
+        joblib.dump(
+            {"model": model, "feature_mode": feature_mode},
+            MODELS_DIR / "image_classifier.joblib",
+        )
     elif capability == "audio_classifier":
         features, labels = _load_audio_dataset(DATA_DIR / "audio")
         model = LogisticRegression(max_iter=1000)
@@ -249,7 +253,11 @@ def predict(capability: str) -> dict:
         _write_json("predictions.json", predictions)
         return {"status": "ok", "predictions": predictions}
     if capability == "image_classifier":
-        model = joblib.load(MODELS_DIR / "image_classifier.joblib")
+        store = joblib.load(MODELS_DIR / "image_classifier.joblib")
+        if not isinstance(store, dict):
+            store = {"model": store, "feature_mode": "pixel"}
+        model = store["model"]
+        feature_mode = store.get("feature_mode", "pixel")
         image_paths = sorted(
             path
             for path in (DATA_DIR / "predict_images").glob("*")
@@ -257,7 +265,7 @@ def predict(capability: str) -> dict:
         )
         predictions = []
         for image_path in image_paths:
-            prediction = str(model.predict([_image_features(image_path)])[0])
+            prediction = str(model.predict([_image_features(image_path, feature_mode)])[0])
             predictions.append({"image": image_path.name, "prediction": prediction})
         _write_json("predictions.json", predictions)
         return {"status": "ok", "predictions": predictions}
@@ -366,14 +374,14 @@ def _write_json(name: str, data) -> None:
     )
 
 
-def _load_image_dataset(root: Path) -> tuple[list[list[float]], list[str]]:
+def _load_image_dataset(root: Path, feature_mode: str) -> tuple[list[list[float]], list[str]]:
     features = []
     labels = []
     for label_dir in sorted(path for path in root.iterdir() if path.is_dir()):
         for image_path in sorted(label_dir.glob("*")):
             if image_path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}:
                 continue
-            features.append(_image_features(image_path))
+            features.append(_image_features(image_path, feature_mode))
             labels.append(label_dir.name)
     return features, labels
 
@@ -445,11 +453,52 @@ def _load_audio_dataset(root: Path) -> tuple[list[list[float]], list[str]]:
     return features, labels
 
 
-def _image_features(path: Path) -> list[float]:
-    # Must stay identical to the studio's in-app feature extraction so the
-    # bundled pre-trained model keeps working here.
-    image = Image.open(path).convert("RGB").resize((32, 32))
-    arr = np.asarray(image, dtype=np.float64) / 255.0
+# ---- image features (must stay identical to the studio's in-app pipeline) ----
+
+PRETRAINED_EMBEDDER = MODELS_DIR / "pretrained" / "mobilenetv2.onnx"
+EMBED_INPUT_SIZE = (224, 224)
+IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+_EMBEDDER_SESSION = None
+
+
+def _embedder_session():
+    global _EMBEDDER_SESSION
+    if _EMBEDDER_SESSION is None and PRETRAINED_EMBEDDER.is_file():
+        import onnxruntime
+
+        _EMBEDDER_SESSION = onnxruntime.InferenceSession(
+            str(PRETRAINED_EMBEDDER), providers=["CPUExecutionProvider"]
+        )
+    return _EMBEDDER_SESSION
+
+
+def _active_image_feature_mode() -> str:
+    if PRETRAINED_EMBEDDER.is_file():
+        try:
+            import onnxruntime  # noqa: F401
+        except ImportError:
+            return "pixel"
+        return "mobilenet_v2"
+    return "pixel"
+
+
+def _image_features(path: Path, feature_mode: str = "pixel") -> list[float]:
+    image = Image.open(path).convert("RGB")
+    if feature_mode == "mobilenet_v2":
+        session = _embedder_session()
+        if session is None:
+            raise RuntimeError(
+                "模型使用 MobileNet 特征训练，需要 models/pretrained/mobilenetv2.onnx "
+                "和 onnxruntime（pip install onnxruntime）。"
+            )
+        resized = image.resize(EMBED_INPUT_SIZE)
+        pixels = np.asarray(resized, dtype=np.float32) / 255.0
+        normalized = (pixels - IMAGENET_MEAN) / IMAGENET_STD
+        batch = normalized.transpose(2, 0, 1)[np.newaxis, :]
+        output = session.run(None, {session.get_inputs()[0].name: batch})[0]
+        return output[0].astype(np.float64).tolist()
+    arr = np.asarray(image.resize((32, 32)), dtype=np.float64) / 255.0
     return arr.flatten().tolist()
 '''
 
@@ -495,6 +544,7 @@ def _image_features(path: Path) -> list[float]:
             [
                 "joblib>=1.5.0",
                 "numpy>=2.0.0",
+                "onnxruntime>=1.18.0",
                 "pillow>=10.0.0",
                 "scikit-learn>=1.5.0",
                 "# Optional for OCR tasks:",

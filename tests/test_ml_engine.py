@@ -45,6 +45,67 @@ def make_wav_bytes(frequency: float, duration: float = 0.5, rate: int = 16000) -
     return buffer.getvalue()
 
 
+def test_text_classifier_naive_bayes_choice(tmp_path: Path) -> None:
+    report = text_classifier.train(TEXT_SAMPLES, tmp_path, model_choice="naive_bayes")
+
+    assert report["model_choice"] == "naive_bayes"
+    assert report["model_name"] == "朴素贝叶斯"
+
+    result = text_classifier.predict(tmp_path, "昆曲 舞台 演出")
+    assert result["label"] == "传统戏剧"
+
+
+def test_text_classifier_rejects_unknown_choice(tmp_path: Path) -> None:
+    with pytest.raises(MLDataError, match="不支持"):
+        text_classifier.train(TEXT_SAMPLES, tmp_path, model_choice="transformer")
+
+
+def test_text_classifier_compare_reports_all_models(tmp_path: Path) -> None:
+    rows = text_classifier.compare(TEXT_SAMPLES)
+
+    assert [row["model_choice"] for row in rows] == [
+        "logistic_regression",
+        "naive_bayes",
+        "random_forest",
+    ]
+    for row in rows:
+        assert 0.0 <= row["train_accuracy"] <= 1.0
+        assert row["train_ms"] >= 0
+        # 2 samples per class is below the cross-val threshold.
+        assert row["cross_val_accuracy"] is None
+
+
+def test_sensor_random_forest_reports_importances(tmp_path: Path) -> None:
+    raw_csv = (
+        "心率,体温,动作\n"
+        "110,38.6,提醒就诊\n72,36.5,继续观察\n118,39.2,提醒就诊\n68,36.8,继续观察\n"
+    )
+
+    report = sensor_model.train(raw_csv, tmp_path, model_choice="random_forest")
+
+    assert report["model_choice"] == "random_forest"
+    assert "rules_text" not in report
+    assert set(report["feature_importances"]) == {"心率", "体温"}
+
+    result = sensor_model.predict(tmp_path, {"心率": "120", "体温": "39.0"})
+    assert result["label"] == "提醒就诊"
+
+
+def test_image_classifier_knn_choice(tmp_path: Path) -> None:
+    labeled = {
+        "红色卡片": [make_image_bytes((220, 60 + index, 60)) for index in range(3)],
+        "绿色卡片": [make_image_bytes((60, 170 + index, 90)) for index in range(3)],
+    }
+
+    report = image_classifier.train(labeled, tmp_path, model_choice="knn")
+
+    assert report["model_choice"] == "knn"
+    assert report["cross_val_accuracy"] is not None
+
+    result = image_classifier.predict(tmp_path, make_image_bytes((215, 65, 62)))
+    assert result["label"] == "红色卡片"
+
+
 def test_text_classifier_trains_and_predicts(tmp_path: Path) -> None:
     report = text_classifier.train(TEXT_SAMPLES, tmp_path)
 

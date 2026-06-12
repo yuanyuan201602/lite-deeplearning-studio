@@ -166,6 +166,49 @@ def test_export_sensor_project_keeps_student_columns_and_runs(tmp_path: Path) ->
     assert result.returncode == 0, result.stderr
 
 
+def test_export_image_project_bundles_embedder_and_predicts(tmp_path: Path) -> None:
+    from app.ml import pretrained
+
+    if not pretrained.has_image_embedder():
+        import pytest
+
+        pytest.skip("pretrained embedder not downloaded")
+
+    service, info = make_project(
+        tmp_path, "future_creator", "image_recognition_starter", "迁移学习导出"
+    )
+    for label, color in (("红色卡片", (220, 60, 60)), ("绿色卡片", (60, 170, 90))):
+        service.add_images(
+            info, label, [(f"{index}.png", make_image_bytes(color)) for index in range(2)]
+        )
+    service.train(info, "image_classifier")
+    assert info.train_report["feature_mode"] == "mobilenet_v2"
+    task = get_task("future_creator", "image_recognition_starter")
+    assert task is not None
+
+    export_path, _ = ExportService().export_project(info, task, service)
+
+    with ZipFile(export_path) as archive:
+        names = set(archive.namelist())
+    assert "models/pretrained/mobilenetv2.onnx" in names
+    assert "models/image_classifier.joblib" in names
+
+    # The exported predict.py must reproduce the embedding features (key invariant).
+    generated_dir = service.workspace(info).generated_dir
+    result = subprocess.run(
+        [sys.executable, "predict.py"],
+        cwd=generated_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    predictions = json.loads(
+        (generated_dir / "outputs" / "predictions.json").read_text(encoding="utf-8")
+    )
+    assert {entry["prediction"] for entry in predictions} <= {"红色卡片", "绿色卡片"}
+
+
 def test_export_audio_project_bundles_model_and_predicts(tmp_path: Path) -> None:
     service, info = make_project(
         tmp_path, "general_ml", "general_audio_classifier", "声音导出"

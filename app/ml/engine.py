@@ -6,6 +6,7 @@ from typing import Any
 
 from app.ml import (
     audio_classifier,
+    classifiers,
     image_classifier,
     ocr_checker,
     qa_retrieval,
@@ -14,7 +15,13 @@ from app.ml import (
 )
 from app.ml.base import MLDataError
 
-__all__ = ["MLDataError", "train_capability", "predict_capability"]
+__all__ = [
+    "MLDataError",
+    "train_capability",
+    "predict_capability",
+    "compare_capability",
+    "list_model_choices",
+]
 
 TEXT_SAMPLES_FILE = "text_samples.json"
 QA_PAIRS_FILE = "qa_pairs.json"
@@ -26,20 +33,62 @@ AUDIO_LABELS_FILE = "audio_labels.json"
 AUDIO_DIR = "audio"
 
 
-def train_capability(capability: str, dataset_dir: Path, models_dir: Path) -> dict[str, Any]:
+def train_capability(
+    capability: str,
+    dataset_dir: Path,
+    models_dir: Path,
+    model_choice: str | None = None,
+) -> dict[str, Any]:
     if capability == "text_classifier":
-        return text_classifier.train(_load_json_list(dataset_dir / TEXT_SAMPLES_FILE), models_dir)
+        return text_classifier.train(
+            _load_json_list(dataset_dir / TEXT_SAMPLES_FILE), models_dir, model_choice
+        )
     if capability == "image_classifier":
-        return image_classifier.train(load_labeled_images(dataset_dir), models_dir)
+        return image_classifier.train(load_labeled_images(dataset_dir), models_dir, model_choice)
     if capability == "audio_classifier":
-        return audio_classifier.train(load_labeled_audio(dataset_dir), models_dir)
+        return audio_classifier.train(load_labeled_audio(dataset_dir), models_dir, model_choice)
     if capability == "qa_retrieval":
         return qa_retrieval.train(_load_json_list(dataset_dir / QA_PAIRS_FILE), models_dir)
     if capability == "sensor_decision_model":
-        return sensor_model.train(_load_text(dataset_dir / SENSOR_CSV_FILE), models_dir)
+        return sensor_model.train(
+            _load_text(dataset_dir / SENSOR_CSV_FILE), models_dir, model_choice
+        )
     if capability == "ocr_typo_checker":
         return ocr_checker.train(_load_ocr_correct_text(dataset_dir), models_dir)
     raise MLDataError(f"暂不支持这种 AI 能力：{capability}")
+
+
+def compare_capability(capability: str, dataset_dir: Path) -> list[dict[str, Any]]:
+    """Fit every available model on the same data; nothing is persisted."""
+    if capability == "text_classifier":
+        return text_classifier.compare(_load_json_list(dataset_dir / TEXT_SAMPLES_FILE))
+    if capability == "image_classifier":
+        return image_classifier.compare(load_labeled_images(dataset_dir))
+    if capability == "audio_classifier":
+        return audio_classifier.compare(load_labeled_audio(dataset_dir))
+    if capability == "sensor_decision_model":
+        return sensor_model.compare(_load_text(dataset_dir / SENSOR_CSV_FILE))
+    raise MLDataError("这个任务只有一种处理方式，不需要对比模型。")
+
+
+def list_model_choices(capability: str) -> list[dict[str, Any]]:
+    if capability == "text_classifier":
+        return classifiers.list_choice_info(
+            text_classifier.MODEL_CHOICES, text_classifier.DEFAULT_MODEL
+        )
+    if capability == "image_classifier":
+        return classifiers.list_choice_info(
+            image_classifier.MODEL_CHOICES, image_classifier.DEFAULT_MODEL
+        )
+    if capability == "audio_classifier":
+        return classifiers.list_choice_info(
+            audio_classifier.MODEL_CHOICES, audio_classifier.DEFAULT_MODEL
+        )
+    if capability == "sensor_decision_model":
+        return classifiers.list_choice_info(
+            sensor_model.MODEL_CHOICES, sensor_model.DEFAULT_MODEL
+        )
+    return []
 
 
 def predict_capability(capability: str, models_dir: Path, payload: dict[str, Any]) -> dict[str, Any]:

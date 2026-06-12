@@ -6,7 +6,9 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.main import create_app
-from app.ml import object_detector
+from app.ml import object_detector, pretrained
+
+DETECTOR_PRESENT = pretrained.has_detector()
 
 
 def make_client(tmp_path: Path) -> TestClient:
@@ -26,31 +28,19 @@ def test_homepage_links_detect_playground(tmp_path: Path) -> None:
     assert "目标检测体验" in response.text
 
 
-def test_detect_page_renders_with_availability_hint(tmp_path: Path) -> None:
+def test_detect_page_renders_with_engine_status(tmp_path: Path) -> None:
     response = make_client(tmp_path).get("/playground/detect")
 
     assert response.status_code == 200
     assert "目标检测体验" in response.text
-    if not object_detector.is_available():
-        assert "vision" in response.text
+    if object_detector.active_engine() == "ssd":
+        assert "SSD-MobileNet" in response.text
+    else:
+        assert "download_pretrained" in response.text or "vision" in response.text
 
 
-def test_detect_api_friendly_error_without_cv2(tmp_path: Path) -> None:
-    if object_detector.is_available():
-        pytest.skip("opencv installed; degradation path not reachable")
-
-    response = make_client(tmp_path).post(
-        "/api/playground/detect",
-        files={"file": ("photo.png", make_image_bytes(), "image/png")},
-    )
-
-    assert response.status_code == 400
-    assert "vision" in response.json()["detail"]
-
-
-def test_detect_api_returns_box_list_with_cv2(tmp_path: Path) -> None:
-    pytest.importorskip("cv2")
-
+@pytest.mark.skipif(not DETECTOR_PRESENT, reason="pretrained detector not downloaded")
+def test_detect_api_uses_ssd_engine(tmp_path: Path) -> None:
     response = make_client(tmp_path).post(
         "/api/playground/detect",
         files={"file": ("photo.png", make_image_bytes(), "image/png")},
@@ -58,6 +48,36 @@ def test_detect_api_returns_box_list_with_cv2(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     data = response.json()
+    assert data["engine"] == "ssd"
     assert data["count"] == len(data["boxes"])
     assert data["width"] == 120
     assert data["height"] == 120
+
+
+def test_detect_api_friendly_hint_without_any_engine(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(pretrained, "PRETRAINED_DIR", tmp_path / "missing")
+    if object_detector._has_cv2():
+        pytest.skip("opencv installed; haar fallback would handle this")
+
+    response = make_client(tmp_path).post(
+        "/api/playground/detect",
+        files={"file": ("photo.png", make_image_bytes(), "image/png")},
+    )
+
+    assert response.status_code == 400
+    assert "download_pretrained" in response.json()["detail"]
+
+
+def test_detect_api_rejects_broken_image(tmp_path: Path) -> None:
+    if object_detector.active_engine() is None:
+        pytest.skip("no detection engine available")
+
+    response = make_client(tmp_path).post(
+        "/api/playground/detect",
+        files={"file": ("photo.png", b"not an image", "image/png")},
+    )
+
+    assert response.status_code == 400
+    assert "打不开" in response.json()["detail"]
