@@ -299,6 +299,72 @@ def test_audio_upload_rejects_non_wav(tmp_path: Path) -> None:
     assert "WAV" in upload.json()["detail"]
 
 
+def test_train_accepts_classifier_choice_and_state_lists_choices(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(client, "smart_museum", "heritage_text_classifier", "模型选择")
+
+    state = client.get(f"/api/projects/{project_id}/state").json()
+    slugs = [choice["slug"] for choice in state["model_choices"]]
+    assert slugs == ["logistic_regression", "naive_bayes", "random_forest"]
+    assert all("principle" in choice and "best_for" in choice for choice in state["model_choices"])
+
+    client.post(
+        f"/api/projects/{project_id}/data/text",
+        json={
+            "samples": [
+                {"text": "昆曲 唱腔 舞台", "label": "戏剧"},
+                {"text": "梨园戏 地方 剧目", "label": "戏剧"},
+                {"text": "德化瓷 烧制 窑炉", "label": "技艺"},
+                {"text": "蜡染 染布 图案", "label": "技艺"},
+            ]
+        },
+    )
+
+    train = client.post(
+        f"/api/projects/{project_id}/train", json={"classifier": "naive_bayes"}
+    )
+    assert train.status_code == 200
+    assert train.json()["report"]["model_choice"] == "naive_bayes"
+
+    bad = client.post(f"/api/projects/{project_id}/train", json={"classifier": "gpt4"})
+    assert bad.status_code == 400
+    assert "可选" in bad.json()["detail"]
+
+
+def test_train_compare_returns_rows_for_all_models(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(
+        client, "future_creator", "sensor_decision_template", "模型对比"
+    )
+    client.post(
+        f"/api/projects/{project_id}/data/sensor",
+        json={
+            "csv": "体温,距离,动作\n38.6,12,提醒\n36.7,45,观察\n37.8,20,提醒\n36.5,60,观察\n39.0,9,提醒\n36.4,70,观察"
+        },
+    )
+
+    response = client.post(f"/api/projects/{project_id}/train/compare")
+
+    assert response.status_code == 200
+    rows = response.json()["rows"]
+    assert [row["model_choice"] for row in rows] == ["decision_tree", "random_forest", "knn"]
+    assert all(row["cross_val_accuracy"] is not None for row in rows)
+
+    # Compare must not persist a model: training step still required.
+    state = client.get(f"/api/projects/{project_id}/state").json()
+    assert state["project"]["train_report"] is None
+
+
+def test_train_compare_without_data_returns_friendly_400(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(client, "smart_museum", "heritage_text_classifier", "空对比")
+
+    response = client.post(f"/api/projects/{project_id}/train/compare")
+
+    assert response.status_code == 400
+    assert "准备数据" in response.json()["detail"]
+
+
 def test_export_without_training_returns_friendly_400(tmp_path: Path) -> None:
     client = make_client(tmp_path)
     project_id = create_project(client, "smart_museum", "heritage_text_classifier", "未训练导出")
