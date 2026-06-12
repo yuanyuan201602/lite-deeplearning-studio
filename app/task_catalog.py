@@ -7,6 +7,10 @@ STANDARD_OUTPUTS = [
     "train.py",
     "predict.py",
     "run.py",
+    "run_on_unihiker.py",
+    "setup_unihiker.sh",
+    "deploy.sh",
+    "deploy.bat",
     "notebook.ipynb",
     "ai_runtime/__init__.py",
     "ai_runtime/core.py",
@@ -18,6 +22,10 @@ STANDARD_OUTPUTS = [
     "speech/README.md",
     "speech/speech_output.py",
     "speech/voice_config.json",
+    "creative_examples/01_display_result.py",
+    "creative_examples/02_trigger_buzzer.py",
+    "creative_examples/03_count_and_log.py",
+    "creative_examples/04_servo_control.py",
 ]
 
 

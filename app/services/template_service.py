@@ -27,6 +27,10 @@ class TemplateService:
             "train.py": self._render_train_py(task),
             "predict.py": self._render_predict_py(task),
             "run.py": self._render_run_py(task, request),
+            "run_on_unihiker.py": self._render_run_on_unihiker_py(task),
+            "setup_unihiker.sh": self._render_setup_unihiker_sh(),
+            "deploy.sh": self._render_deploy_sh(request),
+            "deploy.bat": self._render_deploy_bat(request),
             "ai_runtime/__init__.py": "",
             "ai_runtime/core.py": self._render_ai_core_py(),
             "notebook.ipynb": self._render_notebook(task, request),
@@ -40,6 +44,10 @@ class TemplateService:
             "speech/voice_config.json": self._render_voice_config(task, request),
             "data_sample/sample_input.txt": self._render_sample_input(request),
             "models/.gitkeep": "",
+            "creative_examples/01_display_result.py": self._render_creative_example_display(),
+            "creative_examples/02_trigger_buzzer.py": self._render_creative_example_buzzer(),
+            "creative_examples/03_count_and_log.py": self._render_creative_example_counter(),
+            "creative_examples/04_servo_control.py": self._render_creative_example_servo(),
         }
 
         written_files: list[Path] = []
@@ -500,6 +508,95 @@ def _image_features(path: Path, feature_mode: str = "pixel") -> list[float]:
         return output[0].astype(np.float64).tolist()
     arr = np.asarray(image.resize((32, 32)), dtype=np.float64) / 255.0
     return arr.flatten().tolist()
+
+
+def _image_features_from_bytes(data: bytes, feature_mode: str = "pixel") -> list[float]:
+    from io import BytesIO
+    image = Image.open(BytesIO(data)).convert("RGB")
+    if feature_mode == "mobilenet_v2":
+        session = _embedder_session()
+        if session is None:
+            raise RuntimeError(
+                "模型使用 MobileNet 特征训练，需要 models/pretrained/mobilenetv2.onnx 和 onnxruntime。"
+            )
+        resized = image.resize(EMBED_INPUT_SIZE)
+        pixels = np.asarray(resized, dtype=np.float32) / 255.0
+        normalized = (pixels - IMAGENET_MEAN) / IMAGENET_STD
+        batch = normalized.transpose(2, 0, 1)[np.newaxis, :]
+        output = session.run(None, {session.get_inputs()[0].name: batch})[0]
+        return output[0].astype(np.float64).tolist()
+    arr = np.asarray(image.resize((32, 32)), dtype=np.float64) / 255.0
+    return arr.flatten().tolist()
+
+
+def _audio_features_from_bytes(data: bytes) -> list[float]:
+    import tempfile, os
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+    try:
+        return _audio_features(Path(tmp_path))
+    finally:
+        os.unlink(tmp_path)
+
+
+def predict_raw(capability: str, data) -> dict:
+    """Predict directly from raw data — used by run_on_unihiker.py.
+
+    data types by capability:
+      text_classifier / qa_retrieval : str
+      image_classifier               : bytes (JPEG/PNG) or Path
+      audio_classifier               : bytes (WAV) or Path
+      sensor_decision_model          : dict[str, float | str]
+    """
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    if capability == "text_classifier":
+        model = joblib.load(MODELS_DIR / "text_classifier.joblib")
+        label = str(model.predict([data])[0])
+        scores = {c: float(p) for c, p in zip(model.classes_, model.predict_proba([data])[0])}
+        return {"label": label, "scores": scores}
+    if capability == "image_classifier":
+        store = joblib.load(MODELS_DIR / "image_classifier.joblib")
+        if not isinstance(store, dict):
+            store = {"model": store, "feature_mode": "pixel"}
+        model = store["model"]
+        feature_mode = store.get("feature_mode", "pixel")
+        if isinstance(data, (bytes, bytearray)):
+            features = _image_features_from_bytes(bytes(data), feature_mode)
+        else:
+            features = _image_features(Path(data), feature_mode)
+        label = str(model.predict([features])[0])
+        scores = {c: float(p) for c, p in zip(model.classes_, model.predict_proba([features])[0])}
+        return {"label": label, "scores": scores}
+    if capability == "audio_classifier":
+        model = joblib.load(MODELS_DIR / "audio_classifier.joblib")
+        if isinstance(data, (bytes, bytearray)):
+            features = _audio_features_from_bytes(bytes(data))
+        else:
+            features = _audio_features(Path(data))
+        label = str(model.predict([features])[0])
+        scores = {c: float(p) for c, p in zip(model.classes_, model.predict_proba([features])[0])}
+        return {"label": label, "scores": scores}
+    if capability == "qa_retrieval":
+        store = joblib.load(MODELS_DIR / "qa_retrieval.joblib")
+        query = store["vectorizer"].transform([_normalize_question(str(data))])
+        sims = cosine_similarity(query, store["matrix"])[0]
+        best = int(np.argmax(sims))
+        confidence = float(sims[best])
+        return {
+            "label": store["rows"][best]["answer"],
+            "question": store["rows"][best]["question"],
+            "confidence": confidence,
+            "confident": confidence >= 0.15,
+        }
+    if capability == "sensor_decision_model":
+        store = joblib.load(MODELS_DIR / "sensor_decision_model.joblib")
+        model = store["model"]
+        feature_names = store["feature_names"]
+        features = [[float(data[name]) for name in feature_names]]
+        label = str(model.predict(features)[0])
+        return {"label": label, "feature_names": feature_names}
+    raise ValueError(f"Unknown capability: {capability}")
 '''
 
     def _render_notebook(self, task: TaskDefinition, request: GenerationRequest) -> str:
@@ -620,16 +717,15 @@ def _image_features(path: Path, feature_mode: str = "pixel") -> list[float]:
 ## 平台已生成
 
 - `README.md`
-- `train.py`
-- `predict.py`
-- `run.py`
+- `train.py` / `predict.py` / `run.py`
+- `run_on_unihiker.py` — 行空板骨架脚本（修改 `on_result()` 实现创意效果）
+- `setup_unihiker.sh` / `deploy.sh` / `deploy.bat` — 一键部署工具
+- `creative_examples/` — 创意代码片段示例（显示/蜂鸣器/计数/舵机）
 - `notebook.ipynb`
 - `ai_runtime/core.py`
 - `hardware/README.md`
 - `docs/ai_validation.md`
-- `speech/README.md`
-- `speech/speech_output.py`
-- `speech/voice_config.json`
+- `speech/README.md` / `speech/speech_output.py` / `speech/voice_config.json`
 - `docs/competition_checklist.md`
 
 ## 仍需学生补充
@@ -943,6 +1039,643 @@ python run.py
 - `outputs/ai_validation_result.json` 中记录 AI 能力状态。
 {ocr_note}
 """
+
+    # ------------------------------------------------------------------ Unihiker
+
+    def _render_run_on_unihiker_py(self, task: TaskDefinition) -> str:
+        cap = task.ai_capability
+        if cap == "text_classifier":
+            return self._unihiker_text_classifier()
+        if cap == "image_classifier":
+            return self._unihiker_image_classifier()
+        if cap == "audio_classifier":
+            return self._unihiker_audio_classifier()
+        if cap == "sensor_decision_model":
+            return self._unihiker_sensor_decision()
+        if cap == "qa_retrieval":
+            return self._unihiker_qa_retrieval()
+        # Fallback for ocr or unknown capabilities
+        return self._unihiker_generic(cap)
+
+    def _unihiker_text_classifier(self) -> str:
+        return '''\
+"""行空板运行脚本 — 文本分类
+
+在行空板上通过 OCR 或键盘输入文字，模型判断类别后显示在屏幕上。
+
+运行方式：
+  python run_on_unihiker.py
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ai_runtime.core import predict_raw
+
+# ── 行空板硬件初始化 ───────────────────────────────────────────
+try:
+    from unihiker import GUI   # 行空板官方库，出厂固件已内置
+    gui = GUI()
+    _ON_BOARD = True
+except Exception:
+    _ON_BOARD = False
+    print("未检测到行空板环境，使用终端模式运行。")
+
+
+def _show(text: str) -> None:
+    if _ON_BOARD:
+        gui.clear()
+        gui.draw_text(text=text, x=120, y=160, font_size=16, color="#1f1e1d", origin="center")
+    else:
+        print(text)
+
+
+# ================================================================
+#  创意区域 — 只需修改这个函数
+#  label      : 预测到的类别（你训练时设定的标签）
+#  confidence : 最高置信度，0.0~1.0
+# ================================================================
+def on_result(label: str, confidence: float) -> None:
+    # 默认：屏幕显示"类别  置信度%"
+    _show(f"{label}  {confidence:.0%}")
+
+
+# ── 主循环（无需修改）────────────────────────────────────────────
+def main() -> None:
+    _show("文本分类已就绪，输入文字后回车")
+    while True:
+        text = input("输入文字（回车确认）: ").strip()
+        if not text:
+            continue
+        result = predict_raw("text_classifier", text)
+        confidence = max(result["scores"].values()) if result.get("scores") else 0.0
+        on_result(result["label"], confidence)
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+    def _unihiker_image_classifier(self) -> str:
+        return '''\
+"""行空板运行脚本 — 图像分类
+
+连接 USB 摄像头后，按 A 键拍照，模型识别类别并显示在屏幕上。
+
+运行方式：
+  python run_on_unihiker.py
+
+外设要求：
+  - USB 摄像头接行空板 USB-A 口（免驱）
+"""
+from __future__ import annotations
+
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ai_runtime.core import predict_raw
+
+# ── 行空板硬件初始化 ───────────────────────────────────────────
+try:
+    from unihiker import GUI               # 行空板官方库，出厂固件已内置
+    from pinpong.board import Board        # pinpong 硬件控制库，同样已内置
+    from pinpong.extension.unihiker import button_a
+    Board().begin()
+    gui = GUI()
+    _ON_BOARD = True
+except Exception:
+    _ON_BOARD = False
+    print("未检测到行空板环境，使用终端模式（按 Enter 触发）。")
+
+try:
+    import cv2
+    _HAS_CV2 = True
+except ImportError:
+    _HAS_CV2 = False
+    print("未找到 opencv-python，请先运行 setup_unihiker.sh 安装依赖。")
+
+
+def _show(text: str) -> None:
+    if _ON_BOARD:
+        gui.clear()
+        gui.draw_text(text=text, x=120, y=160, font_size=16, color="#1f1e1d", origin="center")
+    else:
+        print(text)
+
+
+# ================================================================
+#  创意区域 — 只需修改这个函数
+#  label      : 预测到的类别
+#  confidence : 置信度 0.0~1.0
+#  frame      : 当前帧（numpy array，可进一步处理）
+# ================================================================
+def on_result(label: str, confidence: float, frame) -> None:
+    # 默认：屏幕显示识别结果
+    _show(f"{label}\\n{confidence:.0%}")
+
+
+# ── 主循环（无需修改）────────────────────────────────────────────
+def main() -> None:
+    if not _HAS_CV2:
+        return
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        _show("找不到摄像头，请检查 USB 连接")
+        return
+
+    _show("按 A 键拍照识别")
+    prev_pressed = False
+
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                time.sleep(0.1)
+                continue
+
+            if _ON_BOARD:
+                pressed = button_a.is_pressed()
+                triggered = pressed and not prev_pressed
+                prev_pressed = pressed
+            else:
+                # 终端模式：按 Enter 触发
+                triggered = len(input("按 Enter 拍照（q 退出）: ")) == 0
+
+            if triggered:
+                _show("识别中...")
+                _, img_bytes = cv2.imencode(".jpg", frame)
+                result = predict_raw("image_classifier", img_bytes.tobytes())
+                confidence = max(result["scores"].values()) if result.get("scores") else 0.0
+                on_result(result["label"], confidence, frame)
+
+            time.sleep(0.05)
+    finally:
+        cap.release()
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+    def _unihiker_audio_classifier(self) -> str:
+        return '''\
+"""行空板运行脚本 — 音频分类
+
+按 A 键录音 3 秒，模型判断声音类别后显示在屏幕上。
+行空板有内置麦克风，录音用官方 unihiker.Audio 类，无需额外外设。
+
+运行方式：
+  python run_on_unihiker.py
+"""
+from __future__ import annotations
+
+import io
+import sys
+import time
+import wave
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ai_runtime.core import predict_raw
+
+# ── 行空板硬件初始化 ───────────────────────────────────────────
+try:
+    from unihiker import GUI, Audio        # 行空板官方库，出厂固件已内置
+    from pinpong.board import Board        # pinpong 硬件控制库，同样已内置
+    from pinpong.extension.unihiker import button_a
+    Board().begin()
+    gui = GUI()
+    audio = Audio()                        # 板载麦克风
+    _ON_BOARD = True
+except Exception:
+    _ON_BOARD = False
+    print("未检测到行空板环境，使用终端模式运行（电脑录音需要 pip install sounddevice）。")
+
+RECORD_SECONDS = 3
+SAMPLE_RATE = 16000
+
+
+def _show(text: str) -> None:
+    if _ON_BOARD:
+        gui.clear()
+        gui.draw_text(text=text, x=120, y=160, font_size=16, color="#1f1e1d", origin="center")
+    else:
+        print(text)
+
+
+def _record_wav(seconds: int = RECORD_SECONDS) -> bytes:
+    """Record from microphone and return WAV bytes."""
+    if _ON_BOARD:
+        clip = Path("/tmp/unihiker_record.wav")
+        audio.record(str(clip), seconds)   # 官方阻塞式录音 API
+        return clip.read_bytes()
+    import sounddevice as sd               # 电脑端调试用
+    data = sd.rec(int(seconds * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1, dtype="int16")
+    sd.wait()
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(SAMPLE_RATE)
+        wf.writeframes(data.tobytes())
+    return buf.getvalue()
+
+
+# ================================================================
+#  创意区域 — 只需修改这个函数
+#  label      : 预测到的声音类别
+#  confidence : 置信度 0.0~1.0
+# ================================================================
+def on_result(label: str, confidence: float) -> None:
+    _show(f"{label}\\n{confidence:.0%}")
+
+
+# ── 主循环（无需修改）────────────────────────────────────────────
+def main() -> None:
+    _show(f"按 A 键录音 {RECORD_SECONDS} 秒")
+    prev_pressed = False
+
+    while True:
+        if _ON_BOARD:
+            pressed = button_a.is_pressed()
+            triggered = pressed and not prev_pressed
+            prev_pressed = pressed
+        else:
+            triggered = len(input("按 Enter 录音（q 退出）: ")) == 0
+
+        if triggered:
+            _show(f"录音中… {RECORD_SECONDS}s")
+            wav_bytes = _record_wav()
+            _show("识别中...")
+            result = predict_raw("audio_classifier", wav_bytes)
+            confidence = max(result["scores"].values()) if result.get("scores") else 0.0
+            on_result(result["label"], confidence)
+
+        time.sleep(0.05)
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+    def _unihiker_sensor_decision(self) -> str:
+        return '''\
+"""行空板运行脚本 — 传感器决策
+
+读取行空板内置六轴传感器（或外接传感器），模型判断动作后显示在屏幕上。
+默认使用内置加速度计（X/Y/Z）作为输入特征，请根据你的训练数据修改。
+
+运行方式：
+  python run_on_unihiker.py
+"""
+from __future__ import annotations
+
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ai_runtime.core import predict_raw
+
+# ── 行空板硬件初始化 ───────────────────────────────────────────
+try:
+    from unihiker import GUI               # 行空板官方库，出厂固件已内置
+    from pinpong.board import Board        # pinpong 硬件控制库，同样已内置
+    # 板载元件都是现成实例：accelerometer/gyroscope/light/buzzer/button_a/button_b
+    from pinpong.extension.unihiker import accelerometer
+    Board().begin()
+    gui = GUI()
+    _ON_BOARD = True
+except Exception:
+    _ON_BOARD = False
+    print("未检测到行空板环境，使用模拟数据运行。")
+
+
+def _show(text: str) -> None:
+    if _ON_BOARD:
+        gui.clear()
+        gui.draw_text(text=text, x=120, y=160, font_size=16, color="#1f1e1d", origin="center")
+    else:
+        print(text)
+
+
+def _read_sensors() -> dict:
+    """读取传感器数据并返回特征字典。
+
+    !! 修改这里以匹配你的训练数据列名 !!
+    训练 CSV 的列名必须与这里的键名完全一致。
+    """
+    if _ON_BOARD:
+        return {
+            "X轴加速度": accelerometer.get_x(),
+            "Y轴加速度": accelerometer.get_y(),
+            "Z轴加速度": accelerometer.get_z(),
+        }
+    else:
+        # 终端模式：逐个输入数值
+        print("模拟输入（直接回车使用默认值 0）：")
+        x = float(input("  X轴加速度: ") or 0)
+        y = float(input("  Y轴加速度: ") or 0)
+        z = float(input("  Z轴加速度: ") or 9.8)
+        return {"X轴加速度": x, "Y轴加速度": y, "Z轴加速度": z}
+
+
+# ================================================================
+#  创意区域 — 只需修改这个函数
+#  action  : 模型判断的动作（你训练时设定的标签）
+#  sensors : 传入的传感器数据字典
+# ================================================================
+def on_result(action: str, sensors: dict) -> None:
+    # 默认：屏幕显示动作名称
+    _show(f"动作: {action}")
+
+
+# ── 主循环（无需修改）────────────────────────────────────────────
+def main() -> None:
+    _show("传感器决策已就绪")
+    while True:
+        sensors = _read_sensors()
+        result = predict_raw("sensor_decision_model", sensors)
+        on_result(result["label"], sensors)
+        time.sleep(0.5)
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+    def _unihiker_qa_retrieval(self) -> str:
+        return '''\
+"""行空板运行脚本 — 智能问答
+
+在行空板上通过键盘输入问题，系统检索最相关的答案并显示在屏幕上。
+
+运行方式：
+  python run_on_unihiker.py
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ai_runtime.core import predict_raw
+
+# ── 行空板硬件初始化 ───────────────────────────────────────────
+try:
+    from unihiker import GUI   # 行空板官方库，出厂固件已内置
+    gui = GUI()
+    _ON_BOARD = True
+except Exception:
+    _ON_BOARD = False
+    print("未检测到行空板环境，使用终端模式运行。")
+
+
+def _show(title: str, body: str) -> None:
+    if _ON_BOARD:
+        gui.clear()
+        gui.draw_text(text=title, x=120, y=40, font_size=14, color="#d97757", origin="center")
+        gui.draw_text(text=body, x=10, y=80, font_size=13, color="#1f1e1d", origin="top_left")
+    else:
+        print(f"问：{title}")
+        print(f"答：{body}")
+
+
+# ================================================================
+#  创意区域 — 只需修改这个函数
+#  question   : 输入的问题
+#  answer     : 检索到的答案
+#  confident  : 是否高置信（True/False）
+# ================================================================
+def on_result(question: str, answer: str, confident: bool) -> None:
+    if confident:
+        _show(question, answer)
+    else:
+        _show(question, "抱歉，我还不清楚这个问题。")
+
+
+# ── 主循环（无需修改）────────────────────────────────────────────
+def main() -> None:
+    _show("智能问答", "请输入你的问题")
+    while True:
+        question = input("输入问题（回车确认）: ").strip()
+        if not question:
+            continue
+        result = predict_raw("qa_retrieval", question)
+        on_result(question, result["label"], result.get("confident", False))
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+    def _unihiker_generic(self, capability: str) -> str:
+        return f'''\
+"""行空板运行脚本 — {capability}
+
+运行方式：
+  python run_on_unihiker.py
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ai_runtime.core import predict_raw
+
+
+# ================================================================
+#  创意区域 — 修改 on_result() 实现你的创意效果
+# ================================================================
+def on_result(result: dict) -> None:
+    print(result)
+
+
+def main() -> None:
+    data = input("输入内容: ").strip()
+    result = predict_raw("{capability}", data)
+    on_result(result)
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+    # ---------------------------------------------------------- deploy scripts
+
+    def _render_setup_unihiker_sh(self) -> str:
+        return '''\
+#!/bin/bash
+# setup_unihiker.sh — 在行空板上运行一次，安装所有运行依赖
+# 用法：bash setup_unihiker.sh
+
+set -e
+
+echo "=== 行空板依赖安装脚本 ==="
+echo "需要行空板已联网（WiFi 或 USB 共享网络）"
+echo ""
+
+# 基础 ML 依赖
+pip install --upgrade scikit-learn joblib numpy pillow onnxruntime
+
+# 摄像头支持（图像分类任务需要）
+pip install opencv-python-headless || echo "opencv 安装失败，图像识别不可用"
+
+# 行空板官方库 unihiker（屏幕/录音）和 pinpong（按键/传感器/蜂鸣器/舵机）
+# 出厂固件已内置，这里只做升级，失败不影响使用
+pip install -U unihiker pinpong || echo "unihiker/pinpong 升级跳过，使用出厂版本"
+
+echo ""
+echo "=== 安装完成 ==="
+echo "运行 python run_on_unihiker.py 启动程序"
+'''
+
+    def _render_deploy_sh(self, request: GenerationRequest) -> str:
+        proj = request.project_name or "project"
+        return f'''\
+#!/bin/bash
+# deploy.sh — Mac/Linux：把项目文件传输到行空板
+# 用法：bash deploy.sh [行空板IP]
+#   默认 IP 为 10.1.2.3（USB 直连默认地址）
+
+BOARD_IP="${{1:-10.1.2.3}}"
+BOARD_USER="root"
+REMOTE_DIR="/root/{proj}"
+
+echo "部署到行空板 $BOARD_IP ..."
+ssh "$BOARD_USER@$BOARD_IP" "mkdir -p $REMOTE_DIR"
+scp -r ai_runtime models run_on_unihiker.py setup_unihiker.sh \\
+    "$BOARD_USER@$BOARD_IP:$REMOTE_DIR/"
+
+echo ""
+echo "=== 部署完成 ==="
+echo "在行空板上运行："
+echo "  ssh root@$BOARD_IP"
+echo "  cd $REMOTE_DIR"
+echo "  bash setup_unihiker.sh   # 首次运行安装依赖"
+echo "  python run_on_unihiker.py"
+'''
+
+    def _render_deploy_bat(self, request: GenerationRequest) -> str:
+        proj = request.project_name or "project"
+        return f'''\
+@echo off
+REM deploy.bat — Windows：把项目文件传输到行空板
+REM 用法：deploy.bat [行空板IP]
+REM   默认 IP 为 10.1.2.3（USB 直连默认地址）
+
+SET BOARD_IP=%1
+IF "%BOARD_IP%"=="" SET BOARD_IP=10.1.2.3
+SET BOARD_USER=root
+SET REMOTE_DIR=/root/{proj}
+
+echo 部署到行空板 %BOARD_IP% ...
+ssh %BOARD_USER%@%BOARD_IP% "mkdir -p %REMOTE_DIR%"
+scp -r ai_runtime models run_on_unihiker.py setup_unihiker.sh ^
+    %BOARD_USER%@%BOARD_IP%:%REMOTE_DIR%/
+
+echo.
+echo === 部署完成 ===
+echo 在行空板上运行：
+echo   ssh root@%BOARD_IP%
+echo   cd %REMOTE_DIR%
+echo   bash setup_unihiker.sh
+echo   python run_on_unihiker.py
+'''
+
+    # ------------------------------------------------------ creative examples
+
+    def _render_creative_example_display(self) -> str:
+        return '''\
+"""示例 01 — 屏幕显示识别结果（默认效果）
+
+把这段代码复制到 run_on_unihiker.py 的 on_result() 函数中。
+"""
+
+
+def on_result(label: str, confidence: float, **kwargs) -> None:
+    if _ON_BOARD:
+        gui.clear()
+        color = "#2ecc71" if confidence >= 0.8 else "#e67e22"
+        gui.draw_text(text=label, x=120, y=130, font_size=22, color=color, origin="center")
+        gui.draw_text(
+            text=f"置信度 {confidence:.0%}", x=120, y=175, font_size=14,
+            color="#666", origin="center"
+        )
+    else:
+        print(f"识别结果: {label} ({confidence:.0%})")
+'''
+
+    def _render_creative_example_buzzer(self) -> str:
+        return '''\
+"""示例 02 — 识别到特定类别时响铃
+
+把这段代码复制到 run_on_unihiker.py 的 on_result() 函数中。
+行空板背面板载蜂鸣器，pinpong 提供现成的 buzzer 实例，无需接线。
+"""
+from pinpong.extension.unihiker import buzzer
+
+# !! 修改这里：改为你希望触发蜂鸣器的类别名称 !!
+TRIGGER_LABELS = {"猫", "狗", "异常"}
+
+
+def on_result(label: str, confidence: float, **kwargs) -> None:
+    _show(f"{label}  {confidence:.0%}")
+    if label in TRIGGER_LABELS and confidence >= 0.7:
+        buzzer.pitch(494, 1)   # 播放一个音符：音高 494Hz，1 拍
+        # 也可以播放内置音乐：buzzer.play(buzzer.BA_DING, buzzer.Once)
+'''
+
+    def _render_creative_example_counter(self) -> str:
+        return '''\
+"""示例 03 — 统计各类别出现次数
+
+把这段代码复制到 run_on_unihiker.py 的 on_result() 函数中。
+"""
+from collections import Counter
+
+_counts: Counter = Counter()
+
+
+def on_result(label: str, confidence: float, **kwargs) -> None:
+    if confidence >= 0.6:
+        _counts[label] += 1
+    lines = [f"{k}: {v}次" for k, v in _counts.most_common(5)]
+    _show("\\n".join(lines) if lines else "等待识别...")
+'''
+
+    def _render_creative_example_servo(self) -> str:
+        return '''\
+"""示例 04 — 识别结果控制舵机角度
+
+把这段代码复制到 run_on_unihiker.py 的 on_result() 函数中。
+舵机接行空板 3Pin I/O 口的 PWM 引脚（带 ~ 标记）。
+
+注意：板载接口只能接 9g 小舵机；金属大舵机电流大，
+需要扩展板独立供电，直接接板载口可能损坏行空板。
+"""
+from pinpong.board import Pin, Servo
+
+# !! 修改这里：类别名称对应的舵机角度（0~180 度）!!
+LABEL_TO_ANGLE = {
+    "左转": 0,
+    "停止": 90,
+    "右转": 180,
+}
+
+servo = Servo(Pin(Pin.P23))   # 根据实际接线修改引脚
+
+
+def on_result(label: str, confidence: float, **kwargs) -> None:
+    _show(f"{label}  {confidence:.0%}")
+    if confidence >= 0.7 and label in LABEL_TO_ANGLE:
+        servo.write_angle(LABEL_TO_ANGLE[label])
+'''
 
     def _write_sample_dataset(
         self,

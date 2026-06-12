@@ -350,3 +350,119 @@ def test_build_generation_request_collects_dataset_fields(tmp_path: Path) -> Non
     assert isinstance(request, GenerationRequest)
     assert request.class_labels == ["戏剧", "技艺"]
     assert "昆曲 唱腔 舞台,戏剧" in request.text_csv
+
+
+UNIHIKER_TASKS = [
+    ("general_text_classifier", "text_classifier"),
+    ("general_image_classifier", "image_classifier"),
+    ("general_audio_classifier", "audio_classifier"),
+    ("general_sensor_decision", "sensor_decision_model"),
+    ("general_qa_retrieval", "qa_retrieval"),
+]
+
+
+def test_unihiker_skeleton_compiles_and_targets_capability(tmp_path: Path) -> None:
+    for task_slug, capability in UNIHIKER_TASKS:
+        service, info = make_project(tmp_path, "general_ml", task_slug, f"行空板-{task_slug}")
+        task = get_task("general_ml", task_slug)
+        assert task is not None
+        ExportService().export_project(info, task, service)
+        generated_dir = service.workspace(info).generated_dir
+
+        skeleton = (generated_dir / "run_on_unihiker.py").read_text(encoding="utf-8")
+        assert f'predict_raw("{capability}"' in skeleton, task_slug
+        assert "def on_result(" in skeleton, task_slug
+        assert "创意区域" in skeleton, task_slug
+
+        result = subprocess.run(
+            [sys.executable, "-m", "py_compile", "run_on_unihiker.py"],
+            cwd=generated_dir,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 0, f"{task_slug}: {result.stderr}"
+
+
+def test_predict_raw_text_uses_bundled_model(tmp_path: Path) -> None:
+    service, info = make_project(tmp_path)
+    service.save_text_samples(info, TEXT_SAMPLES)
+    service.train(info, "text_classifier")
+    task = get_task("smart_museum", "heritage_text_classifier")
+    assert task is not None
+    ExportService().export_project(info, task, service)
+    generated_dir = service.workspace(info).generated_dir
+
+    code = (
+        "import json\n"
+        "from ai_runtime.core import predict_raw\n"
+        "result = predict_raw('text_classifier', '昆曲 舞台 演出')\n"
+        "print(json.dumps(result, ensure_ascii=False))\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=generated_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["label"] == "戏剧"
+    assert set(payload["scores"]) == {"戏剧", "技艺"}
+
+
+def test_predict_raw_sensor_accepts_feature_dict(tmp_path: Path) -> None:
+    service, info = make_project(
+        tmp_path, "future_creator", "sensor_decision_template", "行空板传感器"
+    )
+    service.save_sensor_csv(
+        info,
+        "心率,体温,动作\n110,38.6,提醒就诊\n72,36.5,继续观察\n118,39.2,提醒就诊\n68,36.8,继续观察\n",
+    )
+    service.train(info, "sensor_decision_model")
+    task = get_task("future_creator", "sensor_decision_template")
+    assert task is not None
+    ExportService().export_project(info, task, service)
+    generated_dir = service.workspace(info).generated_dir
+
+    code = (
+        "import json\n"
+        "from ai_runtime.core import predict_raw\n"
+        "result = predict_raw('sensor_decision_model', {'心率': '120', '体温': 39.0})\n"
+        "print(json.dumps(result, ensure_ascii=False))\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=generated_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["label"] == "提醒就诊"
+
+
+def test_export_includes_deploy_scripts_and_examples(tmp_path: Path) -> None:
+    service, info = make_project(tmp_path)
+    task = get_task("smart_museum", "heritage_text_classifier")
+    assert task is not None
+    ExportService().export_project(info, task, service)
+    generated_dir = service.workspace(info).generated_dir
+
+    setup = (generated_dir / "setup_unihiker.sh").read_text(encoding="utf-8")
+    assert "pip install" in setup
+    assert "onnxruntime" in setup
+
+    deploy_sh = (generated_dir / "deploy.sh").read_text(encoding="utf-8")
+    deploy_bat = (generated_dir / "deploy.bat").read_text(encoding="utf-8")
+    for script in (deploy_sh, deploy_bat):
+        assert "scp" in script
+        assert "run_on_unihiker.py" in script
+
+    examples = sorted((generated_dir / "creative_examples").glob("*.py"))
+    assert len(examples) == 4
+    assert "def on_result(" in examples[0].read_text(encoding="utf-8")

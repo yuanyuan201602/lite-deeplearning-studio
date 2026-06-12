@@ -69,6 +69,11 @@ app/services/
   project_service.py      Project persistence under workspace/projects/<id>/ (dataset/, models/,
                           generated/, exports/, metadata.json); train/predict orchestration.
   template_service.py     Renders the export package (train.py, predict.py, ai_runtime/, speech/, docs).
+                          Also renders the UNIHIKER deployment layer: run_on_unihiker.py (per-capability
+                          skeleton with a student-editable on_result() "创意区域" hook; degrades to
+                          terminal mode off-board), setup_unihiker.sh, deploy.sh/.bat (scp to the board),
+                          and creative_examples/ snippets. ai_runtime/core.py exposes predict_raw()
+                          (str/bytes/dict in → {label, scores} out) which the skeletons call.
   export_service.py       export_project(): builds GenerationRequest from stored data, renders templates,
                           copies the in-app trained model into the package, zips it.
 templates/                Jinja2 pages (index, workflow=create form, project=4-step workflow).
