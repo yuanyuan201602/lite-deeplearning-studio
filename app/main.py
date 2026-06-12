@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
-from app.api import create_api_router, register_ml_error_handler
+from app.api import create_api_router, create_packs_router, register_ml_error_handler
 from app.ml import engine, object_detector
 from app.models import AppEdition, ProjectCreateRequest
 from app.services.export_service import ExportService
@@ -25,6 +25,7 @@ from app.task_catalog import (
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_WORKSPACE_ROOT = PROJECT_ROOT / "workspace"
+DATA_PACKS_ROOT = PROJECT_ROOT / "data_packs"
 
 SCHOOL_NAME = "南昌市第二十三中学"
 
@@ -70,7 +71,10 @@ def create_app(
     project_service = ProjectService(workspace_root)
     export_service = ExportService()
 
-    app.include_router(create_api_router(project_service, export_service, app_edition))
+    app.include_router(
+        create_api_router(project_service, export_service, app_edition, DATA_PACKS_ROOT)
+    )
+    app.include_router(create_packs_router(DATA_PACKS_ROOT))
     register_ml_error_handler(app)
 
     def base_context(request: Request) -> dict:
@@ -238,6 +242,33 @@ def create_app(
                 # Rendered with | safe inside a <script> tag, so escape "<" to keep
                 # student-provided text from closing the tag.
                 "initial_state_json": json.dumps(initial_state, ensure_ascii=False).replace(
+                    "<", "\\u003c"
+                ),
+            },
+        )
+
+    @app.get("/collect/{project_id}", response_class=HTMLResponse)
+    def collect_page(request: Request, project_id: str) -> HTMLResponse:
+        info = project_service.get_project(project_id)
+        if info is None:
+            raise HTTPException(status_code=404, detail="没有找到这个项目")
+        task = get_task(info.competition_slug, info.task_slug, app_edition)
+        if task is None:
+            raise HTTPException(status_code=404, detail="没有找到这个任务")
+        collect_state = {
+            "project": info.model_dump(),
+            "dataset": project_service.dataset_summary(info, task.sample_dataset_kind),
+            "capability": task.ai_capability,
+            "dataset_kind": task.sample_dataset_kind,
+        }
+        return templates.TemplateResponse(
+            request=request,
+            name="collect.html",
+            context={
+                **base_context(request),
+                "info": info,
+                "task": task,
+                "collect_state_json": json.dumps(collect_state, ensure_ascii=False).replace(
                     "<", "\\u003c"
                 ),
             },

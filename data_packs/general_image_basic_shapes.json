@@ -1,0 +1,62 @@
+{
+  "kind": "image",
+  "source": {
+    "name": "Basic Shapes Object Detection",
+    "url": "https://huggingface.co/datasets/driesverachtert/basic_shapes_object_detection",
+    "license": "Apache-2.0",
+    "note": "Cropped from the open object-detection dataset for image-classification practice."
+  },
+  "classes": [
+    {
+      "label": "蓝色方形",
+      "files": [
+        "assets/basic_shapes_classification/square/square_000.png",
+        "assets/basic_shapes_classification/square/square_001.png",
+        "assets/basic_shapes_classification/square/square_002.png",
+        "assets/basic_shapes_classification/square/square_003.png",
+        "assets/basic_shapes_classification/square/square_004.png",
+        "assets/basic_shapes_classification/square/square_005.png",
+        "assets/basic_shapes_classification/square/square_006.png",
+        "assets/basic_shapes_classification/square/square_007.png",
+        "assets/basic_shapes_classification/square/square_008.png",
+        "assets/basic_shapes_classification/square/square_009.png",
+        "assets/basic_shapes_classification/square/square_010.png",
+        "assets/basic_shapes_classification/square/square_011.png"
+      ]
+    },
+    {
+      "label": "红色圆形",
+      "files": [
+        "assets/basic_shapes_classification/circle/circle_000.png",
+        "assets/basic_shapes_classification/circle/circle_001.png",
+        "assets/basic_shapes_classification/circle/circle_002.png",
+        "assets/basic_shapes_classification/circle/circle_003.png",
+        "assets/basic_shapes_classification/circle/circle_004.png",
+        "assets/basic_shapes_classification/circle/circle_005.png",
+        "assets/basic_shapes_classification/circle/circle_006.png",
+        "assets/basic_shapes_classification/circle/circle_007.png",
+        "assets/basic_shapes_classification/circle/circle_008.png",
+        "assets/basic_shapes_classification/circle/circle_009.png",
+        "assets/basic_shapes_classification/circle/circle_010.png",
+        "assets/basic_shapes_classification/circle/circle_011.png"
+      ]
+    },
+    {
+      "label": "绿色三角形",
+      "files": [
+        "assets/basic_shapes_classification/triangle/triangle_000.png",
+        "assets/basic_shapes_classification/triangle/triangle_001.png",
+        "assets/basic_shapes_classification/triangle/triangle_002.png",
+        "assets/basic_shapes_classification/triangle/triangle_003.png",
+        "assets/basic_shapes_classification/triangle/triangle_004.png",
+        "assets/basic_shapes_classification/triangle/triangle_005.png",
+        "assets/basic_shapes_classification/triangle/triangle_006.png",
+        "assets/basic_shapes_classification/triangle/triangle_007.png",
+        "assets/basic_shapes_classification/triangle/triangle_008.png",
+        "assets/basic_shapes_classification/triangle/triangle_009.png",
+        "assets/basic_shapes_classification/triangle/triangle_010.png",
+        "assets/basic_shapes_classification/triangle/triangle_011.png"
+      ]
+    }
+  ]
+}

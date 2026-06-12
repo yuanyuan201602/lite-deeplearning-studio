@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}采集数据 · {{ info.project_name }} · {{ app_title }}{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="/">工作台</a> /
+    <a href="/project/{{ info.project_id }}">{{ info.project_name }}</a>
+    / 采集数据
+  </nav>
+
+  <section class="project-head">
+    <div>
+      <p class="eyebrow">{{ task.title }}</p>
+      <h1>数据采集助手</h1>
+      <p class="intro-copy">用摄像头、麦克风或键盘，为你的 AI 项目采集训练数据。</p>
+    </div>
+    <a href="/project/{{ info.project_id }}" class="btn-secondary">完成采集，返回项目</a>
+  </section>
+
+  <section class="panel">
+    <h2>采集进度</h2>
+    <p class="panel-hint">每类建议采集 5 条以上数据，数量越多模型越准确。</p>
+    <div class="collect-progress-grid" id="progress-grid"></div>
+  </section>
+
+  <section class="panel">
+    <div id="collect-area"></div>
+  </section>
+
+  <script id="collect-state" type="application/json">{{ collect_state_json | safe }}</script>
+  <script src="{{ url_for('static', path='/collect.js') }}?v={{ asset_version }}"></script>
+{% endblock %}

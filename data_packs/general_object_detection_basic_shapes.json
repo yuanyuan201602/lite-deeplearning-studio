@@ -1,0 +1,688 @@
+{
+  "kind": "object_detection",
+  "source": {
+    "name": "Basic Shapes Object Detection",
+    "url": "https://huggingface.co/datasets/driesverachtert/basic_shapes_object_detection",
+    "license": "Apache-2.0",
+    "annotation_format": "COCO bbox converted to Lite DeepLearning Studio JSON"
+  },
+  "labels": [
+    "蓝色方形",
+    "红色圆形",
+    "绿色三角形"
+  ],
+  "images": [
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_000.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 509.0,
+          "y": 593.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 286.0,
+          "y": 507.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 291.0,
+          "y": 412.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_001.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 232.0,
+          "y": 595.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 136.0,
+          "y": 60.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 543.0,
+          "y": 438.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_002.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 494.0,
+          "y": 558.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 38.0,
+          "y": 519.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 360.0,
+          "y": 408.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_003.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 183.0,
+          "y": 473.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 476.0,
+          "y": 328.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 13.0,
+          "y": 17.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_004.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 695.0,
+          "y": 220.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 393.0,
+          "y": 599.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 108.0,
+          "y": 338.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_005.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 375.0,
+          "y": 632.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 270.0,
+          "y": 196.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 566.0,
+          "y": 274.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_006.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 247.0,
+          "y": 280.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 487.0,
+          "y": 632.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 356.0,
+          "y": 379.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_007.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 193.0,
+          "y": 515.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 439.0,
+          "y": 220.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 434.0,
+          "y": 722.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_008.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 386.0,
+          "y": 378.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 466.0,
+          "y": 189.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 590.0,
+          "y": 139.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_009.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 594.0,
+          "y": 239.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 107.0,
+          "y": 281.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 246.0,
+          "y": 573.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_010.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 447.0,
+          "y": 395.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 205.0,
+          "y": 154.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 158.0,
+          "y": 489.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_011.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 14.0,
+          "y": 185.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 436.0,
+          "y": 516.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 142.0,
+          "y": 650.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_012.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 534.0,
+          "y": 551.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 328.0,
+          "y": 503.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 312.0,
+          "y": 261.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_013.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 580.0,
+          "y": 586.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 53.0,
+          "y": 412.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 106.0,
+          "y": 712.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_014.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 172.0,
+          "y": 66.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 225.0,
+          "y": 265.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 492.0,
+          "y": 649.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_015.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 103.0,
+          "y": 465.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 347.0,
+          "y": 271.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 374.0,
+          "y": 373.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_016.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 578.0,
+          "y": 575.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 268.0,
+          "y": 357.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 25.0,
+          "y": 426.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_017.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 129.0,
+          "y": 364.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 625.0,
+          "y": 208.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 595.0,
+          "y": 594.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_018.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 670.0,
+          "y": 669.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 556.0,
+          "y": 183.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 296.0,
+          "y": 368.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_019.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 337.0,
+          "y": 694.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 527.0,
+          "y": 504.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 462.0,
+          "y": 85.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_020.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 395.0,
+          "y": 633.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 298.0,
+          "y": 479.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 651.0,
+          "y": 153.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_021.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 176.0,
+          "y": 660.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 350.0,
+          "y": 436.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 651.0,
+          "y": 632.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_022.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 590.0,
+          "y": 419.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 78.0,
+          "y": 86.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 170.0,
+          "y": 356.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    },
+    {
+      "file": "assets/basic_shapes_detection/images/shape_scene_023.png",
+      "width": 800,
+      "height": 800,
+      "annotations": [
+        {
+          "label": "蓝色方形",
+          "x": 238.0,
+          "y": 326.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "红色圆形",
+          "x": 329.0,
+          "y": 673.0,
+          "width": 100.0,
+          "height": 100.0
+        },
+        {
+          "label": "绿色三角形",
+          "x": 665.0,
+          "y": 409.0,
+          "width": 100.0,
+          "height": 50.0
+        }
+      ]
+    }
+  ]
+}

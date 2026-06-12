@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -42,10 +45,35 @@ class ImageLabelPayload(BaseModel):
     label: str = Field(min_length=1, max_length=40)
 
 
+class LoadPackPayload(BaseModel):
+    pack_file: str = Field(min_length=1, max_length=80)
+
+
+def create_packs_router(data_packs_root: Path) -> APIRouter:
+    router = APIRouter(prefix="/api/data-packs")
+
+    @router.get("")
+    def list_packs() -> list:
+        index_file = data_packs_root / "index.json"
+        if not index_file.is_file():
+            return []
+        return json.loads(index_file.read_text(encoding="utf-8"))
+
+    @router.get("/{pack_id}")
+    def get_pack(pack_id: str) -> dict:
+        pack_file = data_packs_root / f"{pack_id}.json"
+        if not pack_file.is_file() or ".." in pack_id or "/" in pack_id:
+            raise HTTPException(status_code=404, detail="没有找到这个样本包")
+        return json.loads(pack_file.read_text(encoding="utf-8"))
+
+    return router
+
+
 def create_api_router(
     project_service: ProjectService,
     export_service: ExportService,
     edition: str,
+    data_packs_root: Path | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/projects")
 
@@ -169,6 +197,31 @@ def create_api_router(
         info, task = load_project(project_id)
         audio_bytes = await file.read()
         return project_service.predict(info, task.ai_capability, {"audio_bytes": audio_bytes})
+
+    @router.post("/{project_id}/data/pack")
+    def load_pack(project_id: str, payload: LoadPackPayload) -> dict:
+        info, task = load_project(project_id)
+        if data_packs_root is None:
+            raise HTTPException(status_code=503, detail="样本包功能未启用")
+        pack_file = data_packs_root / payload.pack_file
+        if not pack_file.is_file() or ".." in payload.pack_file or "/" in payload.pack_file:
+            raise HTTPException(status_code=404, detail="没有找到这个样本包文件")
+        pack = json.loads(pack_file.read_text(encoding="utf-8"))
+        kind = pack.get("kind", "")
+        if kind == "text":
+            project_service.save_text_samples(info, pack["samples"])
+        elif kind == "qa":
+            project_service.save_qa_pairs(info, pack["pairs"])
+        elif kind == "sensor":
+            project_service.save_sensor_csv(info, pack["csv"])
+        elif kind == "image_task":
+            raise HTTPException(
+                status_code=400,
+                detail="图像采集任务卡无法直接导入数据，请前往「数据采集助手」页面用摄像头拍摄。",
+            )
+        else:
+            raise HTTPException(status_code=400, detail=f"不支持的样本包类型：{kind}")
+        return project_state(info, task)
 
     @router.post("/{project_id}/export")
     def export(project_id: str) -> dict:

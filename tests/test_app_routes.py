@@ -439,3 +439,75 @@ def test_homepage_lists_recent_projects(tmp_path: Path) -> None:
 
     assert "继续我的项目" in response.text
     assert "最近项目甲" in response.text
+
+
+def test_collect_page_renders(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(client, "smart_museum", "heritage_text_classifier", "采集测试")
+
+    response = client.get(f"/collect/{project_id}")
+
+    assert response.status_code == 200
+    assert "collect-state" in response.text
+    assert "采集数据" in response.text
+
+
+def test_collect_page_404_on_missing_project(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+
+    assert client.get("/collect/nonexistent").status_code == 404
+
+
+def test_data_packs_list_returns_array(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+
+    response = client.get("/api/data-packs")
+
+    assert response.status_code == 200
+    packs = response.json()
+    assert isinstance(packs, list)
+    assert len(packs) > 0
+    first = packs[0]
+    assert "capability" in first
+    assert "file" in first
+    assert "name" in first
+
+
+def test_load_text_pack_saves_samples(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(client, "smart_museum", "heritage_text_classifier", "文本包测试")
+
+    response = client.post(
+        f"/api/projects/{project_id}/data/pack",
+        json={"pack_file": "smart_museum_text.json"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["dataset"]["sample_count"] > 0
+
+
+def test_load_sensor_pack_saves_csv(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(client, "general_ml", "general_sensor_decision", "传感器包测试")
+
+    response = client.post(
+        f"/api/projects/{project_id}/data/pack",
+        json={"pack_file": "general_sensor_health.json"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["sample_count"] > 0
+
+
+def test_load_image_task_pack_returns_400(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(client, "smart_museum", "heritage_face_intro", "图像任务卡测试")
+
+    response = client.post(
+        f"/api/projects/{project_id}/data/pack",
+        json={"pack_file": "smart_museum_image_task.json"},
+    )
+
+    assert response.status_code == 400
+    assert "采集助手" in response.json()["detail"]

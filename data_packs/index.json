@@ -1,0 +1,156 @@
+[
+  {
+    "id": "general_text_emotions",
+    "name": "情绪识别文本分类",
+    "description": "高兴/悲伤/愤怒/平静/惊讶五类情绪句子，适合练习文本分类",
+    "tags": ["通用", "文本分类"],
+    "capability": "text_classifier",
+    "dataset_kind": "text",
+    "file": "general_text_emotions.json",
+    "sample_count": 60,
+    "class_count": 5
+  },
+  {
+    "id": "general_text_weather",
+    "name": "天气描述分类",
+    "description": "晴天/阴天/下雨/下雪四类天气描述，词汇简单，适合小学生",
+    "tags": ["通用", "文本分类"],
+    "capability": "text_classifier",
+    "dataset_kind": "text",
+    "file": "general_text_weather.json",
+    "sample_count": 40,
+    "class_count": 4
+  },
+  {
+    "id": "general_text_news",
+    "name": "新闻主题分类",
+    "description": "科技/体育/娱乐/生活四类短新闻，帮助学生理解主题分类",
+    "tags": ["通用", "文本分类"],
+    "capability": "text_classifier",
+    "dataset_kind": "text",
+    "file": "general_text_news.json",
+    "sample_count": 48,
+    "class_count": 4
+  },
+  {
+    "id": "general_text_spam",
+    "name": "垃圾信息识别",
+    "description": "正常消息与垃圾广告两类短信，适合练习二分类",
+    "tags": ["通用", "文本分类"],
+    "capability": "text_classifier",
+    "dataset_kind": "text",
+    "file": "general_text_spam.json",
+    "sample_count": 30,
+    "class_count": 2
+  },
+  {
+    "id": "general_qa_school",
+    "name": "校园生活问答",
+    "description": "围绕学校日常的25组问答对，适合练习智能问答检索",
+    "tags": ["通用", "问答"],
+    "capability": "qa_retrieval",
+    "dataset_kind": "qa",
+    "file": "general_qa_school.json",
+    "sample_count": 25,
+    "class_count": 0
+  },
+  {
+    "id": "general_qa_science",
+    "name": "小学科学常识问答",
+    "description": "动植物、天气、人体、物质等25组科学常识问答",
+    "tags": ["通用", "问答"],
+    "capability": "qa_retrieval",
+    "dataset_kind": "qa",
+    "file": "general_qa_science.json",
+    "sample_count": 25,
+    "class_count": 0
+  },
+  {
+    "id": "general_sensor_health",
+    "name": "健康监测传感器",
+    "description": "体温和心率两列传感器数据，判断正常、提醒休息或请就医",
+    "tags": ["通用", "传感器"],
+    "capability": "sensor_decision_model",
+    "dataset_kind": "sensor",
+    "file": "general_sensor_health.json",
+    "sample_count": 45,
+    "class_count": 3
+  },
+  {
+    "id": "general_sensor_motion",
+    "name": "运动状态传感器",
+    "description": "三轴加速度数据，判断静止、行走或跑步",
+    "tags": ["通用", "传感器"],
+    "capability": "sensor_decision_model",
+    "dataset_kind": "sensor",
+    "file": "general_sensor_motion.json",
+    "sample_count": 45,
+    "class_count": 3
+  },
+  {
+    "id": "general_sensor_environment",
+    "name": "环境舒适度传感器",
+    "description": "温度、湿度和光照数据，判断舒适、干燥或闷热",
+    "tags": ["通用", "传感器"],
+    "capability": "sensor_decision_model",
+    "dataset_kind": "sensor",
+    "file": "general_sensor_environment.json",
+    "sample_count": 45,
+    "class_count": 3
+  },
+  {
+    "id": "smart_museum_text",
+    "name": "非遗文化分类（智能博物）",
+    "description": "民间音乐/传统舞蹈/传统戏剧/传统美术四类非遗文本",
+    "tags": ["智能博物", "文本分类"],
+    "capability": "text_classifier",
+    "dataset_kind": "text",
+    "file": "smart_museum_text.json",
+    "sample_count": 60,
+    "class_count": 4
+  },
+  {
+    "id": "smart_museum_qa",
+    "name": "非遗知识问答（智能博物）",
+    "description": "关于非遗保护、工艺、表演和传承的30组问答对",
+    "tags": ["智能博物", "问答"],
+    "capability": "qa_retrieval",
+    "dataset_kind": "qa",
+    "file": "smart_museum_qa.json",
+    "sample_count": 30,
+    "class_count": 0
+  },
+  {
+    "id": "future_creator_sensor",
+    "name": "智慧医疗传感器（优创未来）",
+    "description": "体温、血氧和光照数据，判断正常、休息、光线调节或就医提醒",
+    "tags": ["优创未来", "传感器"],
+    "capability": "sensor_decision_model",
+    "dataset_kind": "sensor",
+    "file": "future_creator_sensor.json",
+    "sample_count": 48,
+    "class_count": 4
+  },
+  {
+    "id": "smart_museum_image_task",
+    "name": "非遗人物卡片采集指引（智能博物）",
+    "description": "任务卡：引导学生用摄像头拍摄传承人卡片，前往采集助手完成",
+    "tags": ["智能博物", "图像"],
+    "capability": "image_classifier",
+    "dataset_kind": "image",
+    "file": "smart_museum_image_task.json",
+    "sample_count": 0,
+    "class_count": 0
+  },
+  {
+    "id": "future_creator_image_task",
+    "name": "创意作品识别采集指引（优创未来）",
+    "description": "任务卡：引导学生用摄像头拍摄手势或实物，前往采集助手完成",
+    "tags": ["优创未来", "图像"],
+    "capability": "image_classifier",
+    "dataset_kind": "image",
+    "file": "future_creator_image_task.json",
+    "sample_count": 0,
+    "class_count": 0
+  }
+]
