@@ -183,6 +183,7 @@ function refreshChecks() {
   stepButtons.forEach((button, i) => {
     button.querySelector(".step-check").hidden = !stepsDone[i];
   });
+  refreshTrainWarning();
 }
 
 stepButtons.forEach((button, index) => {
@@ -225,6 +226,87 @@ function addClassBlock(container, label, lines, placeholder) {
   container.appendChild(block);
 }
 
+/* ---------- sample pack modal ---------- */
+
+function openPackModal() {
+  const overlay = el("div", "modal-overlay");
+  const dialog = el("div", "modal-dialog");
+
+  const header = el("div", "modal-header");
+  header.appendChild(el("h3", "", "加载样本数据包"));
+  const closeBtn = el("button", "modal-close", "×");
+  closeBtn.type = "button";
+  closeBtn.addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  header.appendChild(closeBtn);
+  dialog.appendChild(header);
+
+  const grid = el("div", "pack-grid");
+  const loading = el("p", "pack-empty", "正在加载…");
+  dialog.appendChild(loading);
+  dialog.appendChild(grid);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  fetch("/api/data-packs")
+    .then((r) => r.json())
+    .then((packs) => {
+      loading.remove();
+      const filtered = packs.filter(
+        (p) =>
+          p.capability === capability &&
+          p.dataset_kind !== "image" &&
+          p.dataset_kind !== "audio"
+      );
+      if (!filtered.length) {
+        grid.appendChild(el("p", "pack-empty", "暂无适合当前任务的样本包。"));
+        return;
+      }
+      for (const pack of filtered) {
+        const card = el("div", "pack-card");
+        card.appendChild(el("h4", "", pack.name));
+        card.appendChild(el("p", "", pack.description));
+        const tags = el("div", "");
+        for (const tag of pack.tags) tags.appendChild(el("span", "pack-tag", tag));
+        if (pack.sample_count) tags.appendChild(el("span", "pack-tag", `${pack.sample_count} 条`));
+        card.appendChild(tags);
+        card.addEventListener("click", async () => {
+          card.style.opacity = "0.6";
+          card.style.pointerEvents = "none";
+          try {
+            const next = await postJson("/data/pack", { pack_file: pack.file });
+            Object.assign(state, next);
+            overlay.remove();
+            dataEditor.innerHTML = "";
+            editors[kind]();
+            afterDataSaved(`已加载「${pack.name}」。可继续添加自己的数据。`);
+          } catch (err) {
+            card.style.opacity = "";
+            card.style.pointerEvents = "";
+            setStatus("data-status", err.message, true);
+          }
+        });
+        grid.appendChild(card);
+      }
+    })
+    .catch(() => { loading.textContent = "加载失败，请重试。"; });
+}
+
+function packButton() {
+  const btn = el("button", "btn-ghost", "加载样本包");
+  btn.type = "button";
+  btn.addEventListener("click", openPackModal);
+  return btn;
+}
+
+function collectLink() {
+  const a = document.createElement("a");
+  a.className = "btn-ghost";
+  a.textContent = "前往采集助手（摄像头/麦克风）→";
+  a.href = `/collect/${projectId}`;
+  return a;
+}
+
 function buildTextEditor() {
   dataHint.textContent =
     "给每个类别起名字，再粘贴这个类别的例句，每行一句。每个类别至少 2 句，越多越准。";
@@ -259,6 +341,7 @@ function buildTextEditor() {
     }
     await saveData(() => postJson("/data/text", { samples }));
   });
+  dataEditor.appendChild(packButton());
 }
 
 function buildQaEditor() {
@@ -283,6 +366,7 @@ function buildQaEditor() {
       });
     await saveData(() => postJson("/data/qa", { pairs }));
   });
+  dataEditor.appendChild(packButton());
 }
 
 function buildSensorEditor() {
@@ -297,6 +381,7 @@ function buildSensorEditor() {
   saveButton.addEventListener("click", async () => {
     await saveData(() => postJson("/data/sensor", { csv: textarea.value }));
   });
+  dataEditor.appendChild(packButton());
 }
 
 function buildOcrEditor() {
@@ -414,6 +499,7 @@ function buildImageEditor() {
   });
   newRow.append(newLabel, newFiles, addButton);
   dataEditor.appendChild(newRow);
+  dataEditor.appendChild(collectLink());
 
   renderImageClasses();
 }
@@ -535,6 +621,7 @@ function buildAudioEditor() {
   });
   newRow.append(newLabel, newRecord, newFiles, addButton);
   dataEditor.appendChild(newRow);
+  dataEditor.appendChild(collectLink());
 
   renderAudioClasses();
 }
@@ -562,8 +649,78 @@ const trainButton = document.getElementById("train-button");
 const compareButton = document.getElementById("compare-button");
 const compareResult = document.getElementById("compare-result");
 const trainReport = document.getElementById("train-report");
+const trainLog = document.getElementById("train-log");
 const modelPicker = document.getElementById("model-picker");
 let selectedClassifier = "";
+
+/* 数据量预警：样本太少时在训练面板提示 */
+const MIN_PER_CLASS = 10;
+const MIN_TOTAL = 20;
+const trainWarning = el("p", "train-warning");
+trainWarning.hidden = true;
+document.querySelector("#panel-1 .panel-head").appendChild(trainWarning);
+
+function refreshTrainWarning() {
+  const total = state.dataset.sample_count || 0;
+  if (total === 0 || capability === "ocr_typo_checker") {
+    trainWarning.hidden = true;
+    return;
+  }
+  const counts = state.dataset.class_counts || {};
+  const thin = Object.entries(counts).filter(([, n]) => n < MIN_PER_CLASS);
+  if (total < MIN_TOTAL || thin.length) {
+    const detail = thin.length
+      ? `其中 ${thin.map(([name, n]) => `“${name}”只有 ${n} 条`).join("、")}。`
+      : "";
+    trainWarning.textContent =
+      `数据偏少：现在共 ${total} 条。${detail}每类建议 ${MIN_PER_CLASS} 条以上，` +
+      "太少模型会死记硬背，遇到新数据容易出错。可以回第 1 步加载样本包或继续采集。";
+    trainWarning.hidden = false;
+  } else {
+    trainWarning.hidden = true;
+  }
+}
+
+/* 训练日志：终端风格逐行播放真实训练结果 */
+const LOG_LINE_DELAY_MS = 380;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function logLine(text, cls) {
+  const line = el("div", `log-line${cls ? ` ${cls}` : ""}`, text);
+  trainLog.appendChild(line);
+  return line;
+}
+
+async function playTrainingLog(report, elapsedMs) {
+  const labelCount = (report.labels || []).length;
+  const dataLine = labelCount
+    ? `读取数据：${report.sample_count} 条样本、${labelCount} 个类别`
+    : `读取数据：${report.sample_count} 条`;
+  logLine(`[1/4] ${dataLine}`, "log-ok");
+  await sleep(LOG_LINE_DELAY_MS);
+  if (report.model_name) {
+    logLine(`[2/4] 使用模型：${report.model_name}`, "log-ok");
+    await sleep(LOG_LINE_DELAY_MS);
+  }
+  const fitLine =
+    report.train_accuracy !== null && report.train_accuracy !== undefined
+      ? `拟合训练数据：训练准确率 ${percent(report.train_accuracy)}`
+      : "拟合训练数据：完成";
+  logLine(`[3/4] ${fitLine}（耗时 ${Math.max(1, Math.round(elapsedMs))} 毫秒）`, "log-ok");
+  await sleep(LOG_LINE_DELAY_MS);
+  if (report.cross_val_accuracy) {
+    logLine(`[4/4] 交叉验证：把数据分组轮流考试，平均分 ${percent(report.cross_val_accuracy)}`, "log-ok");
+  } else if (report.train_accuracy !== null && report.train_accuracy !== undefined) {
+    logLine("[4/4] 交叉验证：数据不够，跳过（每类 10 条以上才能模拟考试）", "log-warn");
+  } else {
+    logLine("[4/4] 已建立检索索引", "log-ok");
+  }
+  await sleep(LOG_LINE_DELAY_MS);
+  logLine("模型已保存。详细报告 ↓，然后去第 3 步测试。", "log-done");
+}
 
 if (capability === "ocr_typo_checker") {
   document.getElementById("train-hint").textContent =
@@ -617,15 +774,28 @@ buildModelPicker();
 
 trainButton.addEventListener("click", async () => {
   trainButton.disabled = true;
-  setStatus("train-status", "正在训练，请稍候……", false);
+  setStatus("train-status", "", false);
+  trainReport.innerHTML = "";
+  trainLog.hidden = false;
+  trainLog.innerHTML = "";
+  logLine(`$ python train.py${selectedClassifier ? ` --model ${selectedClassifier}` : ""}`, "log-cmd");
+  const running = logLine("正在训练", "log-run");
+  trainLog.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const startedAt = performance.now();
   try {
     const next = await postJson("/train", { classifier: selectedClassifier });
+    const elapsedMs = performance.now() - startedAt;
+    running.remove();
+    await playTrainingLog(next.report, elapsedMs);
     Object.assign(state, { project: next.project, dataset: next.dataset });
     renderTrainReport(next.report);
     stepsDone[1] = true;
     refreshChecks();
     setStatus("train-status", "训练完成！去第 3 步测试一下吧。", false);
+    trainReport.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (error) {
+    running.remove();
+    logLine(`训练失败：${error.message}`, "log-err");
     setStatus("train-status", error.message, true);
   } finally {
     trainButton.disabled = false;
@@ -735,11 +905,21 @@ function renderTrainReport(report) {
   }
   if (report.feature_importances) {
     const ranked = Object.entries(report.feature_importances).sort((a, b) => b[1] - a[1]);
-    const list = el("p", "report-classes");
-    list.textContent =
-      "模型眼中各传感器的重要程度：" +
-      ranked.map(([name, value]) => `${name} ${Math.round(value * 100)}%`).join("，");
-    card.appendChild(list);
+    const box = el("div", "imp-list");
+    box.appendChild(el("p", "field-label", "模型眼中各传感器的重要程度"));
+    for (const [name, value] of ranked) {
+      const pct = Math.round(value * 100);
+      const row = el("div", "imp-row");
+      row.appendChild(el("span", "imp-name", name));
+      const track = el("div", "imp-track");
+      const bar = el("div", "imp-bar");
+      bar.style.width = `${Math.max(2, pct)}%`;
+      track.appendChild(bar);
+      row.appendChild(track);
+      row.appendChild(el("span", "imp-value", `${pct}%`));
+      box.appendChild(row);
+    }
+    card.appendChild(box);
   }
   trainReport.appendChild(card);
 }
@@ -802,6 +982,17 @@ function buildSensorTest() {
   const button = el("button", "btn-primary", "看看模型的决定");
   button.type = "button";
   button.addEventListener("click", async () => {
+    // Re-sync inputs if columns changed after page load (e.g. data pack loaded post-init)
+    const liveColumns = (state.dataset.columns || []).slice(0, -1);
+    if (liveColumns.join(",") !== [...inputs.keys()].join(",")) {
+      const saved = Object.fromEntries([...inputs.entries()].map(([k, v]) => [k, v.value]));
+      renderInputs(liveColumns);
+      for (const [name, inp] of inputs) if (saved[name] !== undefined) inp.value = saved[name];
+    }
+    if (inputs.size === 0) {
+      renderPredictError("请先在第一步准备传感器数据，训练后再来测试。");
+      return;
+    }
     const values = {};
     for (const [name, input] of inputs) values[name] = input.value;
     try {
