@@ -366,6 +366,26 @@ def test_train_compare_returns_rows_for_all_models(tmp_path: Path) -> None:
     assert state["project"]["train_report"] is None
 
 
+def test_large_sensor_csv_saves_without_422(tmp_path: Path) -> None:
+    # Imported sensor datasets (e.g. 2000-row throw data ≈ 80KB) exceed the old
+    # 20000-char cap; saving them must succeed rather than 422 with "[object Object]".
+    client = make_client(tmp_path)
+    project_id = create_project(
+        client, "future_creator", "sensor_decision_template", "大传感器表"
+    )
+    rows = "\n".join(
+        f"{i % 90}.5,{i % 50}.5,{'近' if i % 2 else '远'}" for i in range(3000)
+    )
+    big_csv = "角度,速度,落点\n" + rows
+    assert len(big_csv) > 20000
+
+    response = client.post(
+        f"/api/projects/{project_id}/data/sensor", json={"csv": big_csv}
+    )
+    assert response.status_code == 200
+    assert response.json()["dataset"]["sample_count"] == 3000
+
+
 def test_train_compare_without_data_returns_friendly_400(tmp_path: Path) -> None:
     client = make_client(tmp_path)
     project_id = create_project(client, "smart_museum", "heritage_text_classifier", "空对比")

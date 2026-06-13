@@ -23,11 +23,26 @@ function el(tag, className, text) {
   return node;
 }
 
+// FastAPI returns a plain string `detail` for our MLDataError, but validation
+// (422) errors return `detail` as a list of objects. Without this, those got
+// stringified to "[object Object]" in the UI.
+function errorDetail(data) {
+  const detail = data && data.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item && item.msg).filter(Boolean).join("；") || "输入有误，请检查后重试。";
+  }
+  if (detail && typeof detail === "object") {
+    return detail.msg || "操作失败，请重试。";
+  }
+  return "操作失败，请重试。";
+}
+
 async function api(path, options = {}) {
   const response = await fetch(`/api/projects/${projectId}${path}`, options);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.detail || "操作失败，请重试。");
+    throw new Error(errorDetail(data));
   }
   return data;
 }

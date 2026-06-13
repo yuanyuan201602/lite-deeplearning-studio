@@ -25,7 +25,9 @@ class QaPairsPayload(BaseModel):
 
 
 class SensorPayload(BaseModel):
-    csv: str = Field(default="", max_length=20000)
+    # Imported sensor datasets can be large (e.g. 2000-row throw data ≈ 80KB);
+    # keep a generous cap so saving/editing them in the UI doesn't 422.
+    csv: str = Field(default="", max_length=2_000_000)
 
 
 class OcrPayload(BaseModel):
