@@ -342,7 +342,10 @@ function buildTextEditor() {
   dataEditor.appendChild(container);
   dataEditor.appendChild(addButton);
 
-  saveButton.addEventListener("click", async () => {
+  // Assign (not addEventListener) so rebuilding the editor — e.g. after loading a
+  // sample pack — replaces this handler instead of stacking another one. Stacked
+  // handlers fire concurrent saves that race and corrupt the dataset file.
+  saveButton.onclick = async () => {
     const samples = [];
     for (const block of container.querySelectorAll(".class-block")) {
       const label = block.querySelector(".class-label-input").value.trim();
@@ -354,7 +357,7 @@ function buildTextEditor() {
       for (const text of lines) samples.push({ text, label });
     }
     await saveData(() => postJson("/data/text", { samples }));
-  });
+  };
   dataEditor.appendChild(packButton());
 }
 
@@ -369,7 +372,7 @@ function buildQaEditor() {
     .join("\n");
   dataEditor.appendChild(textarea);
 
-  saveButton.addEventListener("click", async () => {
+  saveButton.onclick = async () => {
     const pairs = textarea.value
       .split("\n")
       .map((line) => line.replace("｜", "|"))
@@ -379,7 +382,7 @@ function buildQaEditor() {
         return { question: line.slice(0, index).trim(), answer: line.slice(index + 1).trim() };
       });
     await saveData(() => postJson("/data/qa", { pairs }));
-  });
+  };
   dataEditor.appendChild(packButton());
 }
 
@@ -392,9 +395,9 @@ function buildSensorEditor() {
   textarea.value = state.dataset.csv || "";
   dataEditor.appendChild(textarea);
 
-  saveButton.addEventListener("click", async () => {
+  saveButton.onclick = async () => {
     await saveData(() => postJson("/data/sensor", { csv: textarea.value }));
-  });
+  };
   dataEditor.appendChild(packButton());
 }
 
@@ -412,14 +415,14 @@ function buildOcrEditor() {
   observed.value = state.dataset.observed_sample || "";
   dataEditor.append(correctLabel, correct, observedLabel, observed);
 
-  saveButton.addEventListener("click", async () => {
+  saveButton.onclick = async () => {
     await saveData(() =>
       postJson("/data/ocr", {
         correct_text: correct.value,
         observed_sample: observed.value,
       })
     );
-  });
+  };
 }
 
 function buildImageEditor() {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 from datetime import datetime
@@ -105,7 +106,7 @@ class ProjectService:
         normalized = sensor_model.normalize_csv_text(raw_csv)
         sensor_model.parse_sensor_csv(normalized)
         path = self.dataset_dir(info.project_id) / engine.SENSOR_CSV_FILE
-        path.write_text(normalized.strip() + "\n", encoding="utf-8")
+        self._atomic_write_text(path, normalized.strip() + "\n")
         self._touch(info)
 
     def save_ocr_text(self, info: ProjectInfo, correct_text: str, observed_sample: str) -> None:
@@ -171,9 +172,7 @@ class ProjectService:
                     ignore_errors=True,
                 )
                 del label_map[folder_name]
-        labels_path.write_text(
-            json.dumps(label_map, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        self._atomic_write_text(labels_path, json.dumps(label_map, ensure_ascii=False, indent=2))
         self._touch(info)
 
     def dataset_summary(self, info: ProjectInfo, dataset_kind: str) -> dict[str, Any]:
@@ -315,20 +314,25 @@ class ProjectService:
             raise MLDataError(f"找不到这个类别：{label}。")
         folder_name = str(len(label_map))
         label_map[folder_name] = label
-        labels_path.parent.mkdir(parents=True, exist_ok=True)
-        labels_path.write_text(
-            json.dumps(label_map, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        self._atomic_write_text(labels_path, json.dumps(label_map, ensure_ascii=False, indent=2))
         folder = self.dataset_dir(project_id) / media_dir / folder_name
         folder.mkdir(parents=True, exist_ok=True)
         return folder
 
+    @staticmethod
+    def _atomic_write_text(path: Path, text: str) -> None:
+        # Write to a unique temp file then os.replace onto the target. os.replace is
+        # atomic on the same filesystem, so a concurrent reader always sees either the
+        # complete old file or the complete new one — never an empty/half-written one.
+        # Without this, two racing saves (or a save racing a read) corrupt the file.
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(f"{path.name}.{uuid4().hex}.tmp")
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, path)
+
     def _write_dataset_json(self, info: ProjectInfo, filename: str, payload: Any) -> None:
-        dataset_dir = self.dataset_dir(info.project_id)
-        dataset_dir.mkdir(parents=True, exist_ok=True)
-        (dataset_dir / filename).write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        target = self.dataset_dir(info.project_id) / filename
+        self._atomic_write_text(target, json.dumps(payload, ensure_ascii=False, indent=2))
         self._touch(info)
 
     def _read_dataset_json(self, path: Path, default: Any) -> Any:
@@ -342,11 +346,7 @@ class ProjectService:
 
     def _save_info(self, info: ProjectInfo) -> None:
         metadata_path = self.project_dir(info.project_id) / "metadata.json"
-        metadata_path.parent.mkdir(parents=True, exist_ok=True)
-        metadata_path.write_text(
-            info.model_dump_json(indent=2),
-            encoding="utf-8",
-        )
+        self._atomic_write_text(metadata_path, info.model_dump_json(indent=2))
 
     def _make_project_id(self, project_name: str) -> str:
         normalized = SAFE_NAME_PATTERN.sub("-", project_name.strip()).strip("-").lower()
