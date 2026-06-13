@@ -10,7 +10,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
-from app.api import create_api_router, create_packs_router, register_ml_error_handler
+from app.api import (
+    create_api_router,
+    create_datasets_router,
+    create_packs_router,
+    register_ml_error_handler,
+)
 from app.ml import engine, object_detector
 from app.models import AppEdition, ProjectCreateRequest
 from app.services.export_service import ExportService
@@ -27,10 +32,16 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_WORKSPACE_ROOT = PROJECT_ROOT / "workspace"
 DATA_PACKS_ROOT = PROJECT_ROOT / "data_packs"
 
+# Teacher-curated, pre-organized datasets are large (several GB), so they live in
+# a gitignored datasets/ folder at the project root rather than in version control.
+# Point LDS_DATASETS_ROOT elsewhere to override (e.g. a mounted volume on a server).
+# If the path is absent the dataset-import dropdown simply stays empty.
+DATASETS_ROOT = Path(os.environ.get("LDS_DATASETS_ROOT", PROJECT_ROOT / "datasets"))
+
 SCHOOL_NAME = "南昌市第二十三中学"
 
 # Bumping this busts browser caches for styles.css/logo.svg after an upgrade.
-ASSET_VERSION = "0.5.0"
+ASSET_VERSION = "0.6.6"
 
 EDITION_LABELS = {
     "all": "Lite DeepLearning Studio",
@@ -71,10 +82,14 @@ def create_app(
     project_service = ProjectService(workspace_root)
     export_service = ExportService()
 
+    datasets_root = DATASETS_ROOT if DATASETS_ROOT.is_dir() else None
     app.include_router(
-        create_api_router(project_service, export_service, app_edition, DATA_PACKS_ROOT)
+        create_api_router(
+            project_service, export_service, app_edition, DATA_PACKS_ROOT, datasets_root
+        )
     )
     app.include_router(create_packs_router(DATA_PACKS_ROOT))
+    app.include_router(create_datasets_router(datasets_root))
     register_ml_error_handler(app)
 
     def base_context(request: Request) -> dict:
@@ -228,6 +243,8 @@ def create_app(
             "capability": task.ai_capability,
             "dataset_kind": task.sample_dataset_kind,
             "model_choices": engine.list_model_choices(task.ai_capability),
+            "feature_modes": engine.list_feature_modes(task.ai_capability),
+            "eval_count": project_service.eval_count(info),
         }
         return templates.TemplateResponse(
             request=request,

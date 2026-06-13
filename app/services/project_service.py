@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
+import random
 import re
 import shutil
 from datetime import datetime
@@ -18,6 +20,20 @@ SAFE_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
 SAFE_AUDIO_SUFFIXES = {".wav"}
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_AUDIO_BYTES = 10 * 1024 * 1024
+
+# Per-class caps for dataset import. Some organized datasets ship tens of
+# thousands of images (MNIST ~56k); the MobileNet embedder runs once per image
+# at train time, so an uncapped import would make a classroom train crawl.
+IMPORT_CAPS = {"light": 100, "standard": 300, "full": None}
+DEFAULT_IMPORT_CAP = "standard"
+
+# The held-out test/ split is copied here (outside dataset/, so export never sees
+# it and it never joins training) purely to power step 3's "sample a test item".
+EVAL_DIR = "dataset_eval"
+EVAL_MEDIA_DIR = "media"
+EVAL_MANIFEST_FILE = "manifest.json"
+EVAL_PER_CLASS = 20
+EVAL_TEXT_LIMIT = 200
 
 
 class ProjectService:
@@ -175,6 +191,233 @@ class ProjectService:
         self._atomic_write_text(labels_path, json.dumps(label_map, ensure_ascii=False, indent=2))
         self._touch(info)
 
+    # ----- organized dataset import -----
+
+    def import_platform_dataset(
+        self,
+        info: ProjectInfo,
+        capability: str,
+        dataset_dir: Path,
+        cap: str = DEFAULT_IMPORT_CAP,
+    ) -> dict[str, Any]:
+        """Load a pre-organized dataset (train/<label>/ + test/<label>/) into the project.
+
+        train/ becomes the project's training data (same storage the manual
+        uploader writes); test/ is copied to dataset_eval/ for step-3 sampling.
+        """
+        per_class_cap = IMPORT_CAPS.get(cap, IMPORT_CAPS[DEFAULT_IMPORT_CAP])
+        if capability == "image_classifier":
+            return self.import_image_dataset(info, dataset_dir, per_class_cap)
+        if capability == "audio_classifier":
+            return self.import_audio_dataset(info, dataset_dir, per_class_cap)
+        if capability == "text_classifier":
+            return self.import_text_dataset(info, dataset_dir)
+        if capability == "sensor_decision_model":
+            return self.import_sensor_dataset(info, dataset_dir)
+        raise MLDataError("这个任务暂不支持从整理数据集导入。")
+
+    def import_image_dataset(
+        self, info: ProjectInfo, dataset_dir: Path, per_class_cap: int | None
+    ) -> dict[str, Any]:
+        counts = self._import_media_train(
+            info, dataset_dir, per_class_cap, SAFE_IMAGE_SUFFIXES, MAX_IMAGE_BYTES,
+            engine.IMAGE_LABELS_FILE, engine.IMAGES_DIR, "图片",
+        )
+        eval_count = self._store_eval_media(
+            info, dataset_dir, SAFE_IMAGE_SUFFIXES, MAX_IMAGE_BYTES, "image"
+        )
+        return {"class_counts": counts, "eval_count": eval_count}
+
+    def import_audio_dataset(
+        self, info: ProjectInfo, dataset_dir: Path, per_class_cap: int | None
+    ) -> dict[str, Any]:
+        counts = self._import_media_train(
+            info, dataset_dir, per_class_cap, SAFE_AUDIO_SUFFIXES, MAX_AUDIO_BYTES,
+            engine.AUDIO_LABELS_FILE, engine.AUDIO_DIR, "声音",
+        )
+        eval_count = self._store_eval_media(
+            info, dataset_dir, SAFE_AUDIO_SUFFIXES, MAX_AUDIO_BYTES, "audio"
+        )
+        return {"class_counts": counts, "eval_count": eval_count}
+
+    def import_text_dataset(self, info: ProjectInfo, dataset_dir: Path) -> dict[str, Any]:
+        samples = self._read_samples_file(dataset_dir / "train" / "text_samples.json")
+        if not samples:
+            raise MLDataError("这个文本数据集的训练样本是空的。")
+        self.save_text_samples(info, samples)
+        eval_samples = self._read_samples_file(dataset_dir / "test" / "text_samples.json")
+        eval_count = self._store_eval_text(info, eval_samples)
+        counts: dict[str, int] = {}
+        for sample in samples:
+            label = sample.get("label", "").strip()
+            if label:
+                counts[label] = counts.get(label, 0) + 1
+        return {"class_counts": counts, "eval_count": eval_count}
+
+    def import_sensor_dataset(self, info: ProjectInfo, dataset_dir: Path) -> dict[str, Any]:
+        csv_path = dataset_dir / "sensor_data.csv"
+        if not csv_path.is_file():
+            raise MLDataError("这个数据集里没有找到 sensor_data.csv。")
+        self.save_sensor_csv(info, csv_path.read_text(encoding="utf-8"))
+        self._clear_eval(info)  # sensor is tested by typing values, no held-out split
+        return {"class_counts": {}, "eval_count": 0}
+
+    def _import_media_train(
+        self,
+        info: ProjectInfo,
+        dataset_dir: Path,
+        per_class_cap: int | None,
+        suffixes: set[str],
+        max_bytes: int,
+        labels_file: str,
+        media_dir: str,
+        noun: str,
+    ) -> dict[str, int]:
+        train_root = dataset_dir / "train"
+        label_dirs = (
+            sorted(p for p in train_root.iterdir() if p.is_dir())
+            if train_root.is_dir()
+            else []
+        )
+        if not label_dirs:
+            raise MLDataError(f"这个数据集里没有按类别分好的 train 目录，无法导入{noun}。")
+        # Importing replaces this project's media (rather than appending), so that
+        # re-importing with a cap draws a fresh random subset for a new experiment,
+        # and importing a second dataset never mixes classes from the first.
+        self._clear_media(info.project_id, labels_file, media_dir)
+        counts: dict[str, int] = {}
+        for label_dir in label_dirs:
+            files = [
+                p for p in label_dir.iterdir() if p.is_file() and p.suffix.lower() in suffixes
+            ]
+            # Under a cap we sample at random, so "标准·300张" gives a different
+            # 300 each import — letting a teacher compare runs on different subsets.
+            if per_class_cap is not None and len(files) > per_class_cap:
+                files = random.sample(files, per_class_cap)
+            folder = self._media_folder(info.project_id, label_dir.name, True, labels_file, media_dir)
+            saved = 0
+            for src in files:
+                if src.stat().st_size > max_bytes:
+                    continue
+                shutil.copyfile(src, folder / f"{uuid4().hex[:12]}{src.suffix.lower()}")
+                saved += 1
+            if saved:
+                counts[label_dir.name] = saved
+        if not counts:
+            raise MLDataError(f"没有从这个数据集导入到任何{noun}。")
+        self._touch(info)
+        return counts
+
+    def _clear_media(self, project_id: str, labels_file: str, media_dir: str) -> None:
+        shutil.rmtree(self.dataset_dir(project_id) / media_dir, ignore_errors=True)
+        labels_path = self.dataset_dir(project_id) / labels_file
+        if labels_path.exists():
+            labels_path.unlink()
+
+    # ----- held-out eval set (step 3 sampling) -----
+
+    def eval_dir(self, project_id: str) -> Path:
+        return self.project_dir(project_id) / EVAL_DIR
+
+    def _clear_eval(self, info: ProjectInfo) -> None:
+        shutil.rmtree(self.eval_dir(info.project_id), ignore_errors=True)
+
+    def _store_eval_media(
+        self, info: ProjectInfo, dataset_dir: Path, suffixes: set[str], max_bytes: int, kind: str
+    ) -> int:
+        self._clear_eval(info)
+        test_root = dataset_dir / "test"
+        if not test_root.is_dir():
+            return 0
+        eval_root = self.eval_dir(info.project_id)
+        (eval_root / EVAL_MEDIA_DIR).mkdir(parents=True, exist_ok=True)
+        items: list[dict[str, str]] = []
+        for label_dir in sorted(p for p in test_root.iterdir() if p.is_dir()):
+            files = [
+                p for p in label_dir.iterdir() if p.is_file() and p.suffix.lower() in suffixes
+            ]
+            if len(files) > EVAL_PER_CLASS:
+                files = random.sample(files, EVAL_PER_CLASS)
+            for src in files:
+                if src.stat().st_size > max_bytes:
+                    continue
+                rel = f"{EVAL_MEDIA_DIR}/{uuid4().hex[:12]}{src.suffix.lower()}"
+                shutil.copyfile(src, eval_root / rel)
+                items.append({"label": label_dir.name, "file": rel})
+        self._write_eval_manifest(info, kind, items)
+        return len(items)
+
+    def _store_eval_text(self, info: ProjectInfo, eval_samples: list[dict[str, str]]) -> int:
+        self._clear_eval(info)
+        items = [
+            {"label": s["label"].strip(), "text": s["text"].strip()}
+            for s in eval_samples[:EVAL_TEXT_LIMIT]
+            if s.get("text", "").strip() and s.get("label", "").strip()
+        ]
+        self._write_eval_manifest(info, "text", items)
+        return len(items)
+
+    def _write_eval_manifest(self, info: ProjectInfo, kind: str, items: list[dict[str, str]]) -> None:
+        if not items:
+            return
+        eval_root = self.eval_dir(info.project_id)
+        eval_root.mkdir(parents=True, exist_ok=True)
+        self._atomic_write_text(
+            eval_root / EVAL_MANIFEST_FILE,
+            json.dumps({"kind": kind, "items": items}, ensure_ascii=False, indent=2),
+        )
+
+    def _read_eval_manifest(self, info: ProjectInfo) -> dict[str, Any] | None:
+        path = self.eval_dir(info.project_id) / EVAL_MANIFEST_FILE
+        if not path.is_file():
+            return None
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return None
+
+    def eval_count(self, info: ProjectInfo) -> int:
+        manifest = self._read_eval_manifest(info)
+        return len(manifest.get("items", [])) if manifest else 0
+
+    def sample_eval_predict(self, info: ProjectInfo, capability: str) -> dict[str, Any]:
+        """Pick a random held-out test item, run the trained model on it, and
+        return the true label alongside the prediction so step 3 can show both."""
+        manifest = self._read_eval_manifest(info)
+        if not manifest or not manifest.get("items"):
+            raise MLDataError("这个项目还没有测试集。请导入带测试集的整理数据集后再抽样。")
+        item = random.choice(manifest["items"])
+        kind = manifest.get("kind")
+        result: dict[str, Any] = {"kind": kind, "true_label": item["label"]}
+        if kind == "text":
+            result["text"] = item["text"]
+            result["prediction"] = self.predict(
+                info, capability, {"text": item["text"], "values": {}}
+            )
+            return result
+        data = (self.eval_dir(info.project_id) / item["file"]).read_bytes()
+        suffix = Path(item["file"]).suffix.lower()
+        if kind == "image":
+            result["prediction"] = self.predict(info, capability, {"image_bytes": data})
+            mime = "image/png" if suffix == ".png" else "image/jpeg"
+            result["image_data_url"] = f"data:{mime};base64,{base64.b64encode(data).decode()}"
+            return result
+        if kind == "audio":
+            result["prediction"] = self.predict(info, capability, {"audio_bytes": data})
+            return result
+        raise MLDataError("不支持的测试集类型。")
+
+    @staticmethod
+    def _read_samples_file(path: Path) -> list[dict[str, str]]:
+        if not path.is_file():
+            return []
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return []
+        samples = data.get("samples") if isinstance(data, dict) else data
+        return samples if isinstance(samples, list) else []
+
     def dataset_summary(self, info: ProjectInfo, dataset_kind: str) -> dict[str, Any]:
         dataset_dir = self.dataset_dir(info.project_id)
         if dataset_kind == "text":
@@ -269,20 +512,29 @@ class ProjectService:
     # ----- training and prediction -----
 
     def train(
-        self, info: ProjectInfo, capability: str, model_choice: str | None = None
+        self,
+        info: ProjectInfo,
+        capability: str,
+        model_choice: str | None = None,
+        feature_mode: str | None = None,
     ) -> dict[str, Any]:
         report = engine.train_capability(
             capability,
             self.dataset_dir(info.project_id),
             self.models_dir(info.project_id),
             model_choice,
+            feature_mode,
         )
         info.train_report = report
         self._save_info(info)
         return report
 
-    def compare_models(self, info: ProjectInfo, capability: str) -> list[dict[str, Any]]:
-        return engine.compare_capability(capability, self.dataset_dir(info.project_id))
+    def compare_models(
+        self, info: ProjectInfo, capability: str, feature_mode: str | None = None
+    ) -> list[dict[str, Any]]:
+        return engine.compare_capability(
+            capability, self.dataset_dir(info.project_id), feature_mode
+        )
 
     def predict(self, info: ProjectInfo, capability: str, payload: dict[str, Any]) -> dict[str, Any]:
         return engine.predict_capability(capability, self.models_dir(info.project_id), payload)

@@ -304,9 +304,14 @@ def test_train_accepts_classifier_choice_and_state_lists_choices(tmp_path: Path)
     project_id = create_project(client, "smart_museum", "heritage_text_classifier", "模型选择")
 
     state = client.get(f"/api/projects/{project_id}/state").json()
-    slugs = [choice["slug"] for choice in state["model_choices"]]
-    assert slugs == ["logistic_regression", "naive_bayes", "random_forest"]
-    assert all("principle" in choice and "best_for" in choice for choice in state["model_choices"])
+    trainable = [c["slug"] for c in state["model_choices"] if c["trainable"]]
+    assert trainable == ["logistic_regression", "naive_bayes", "random_forest", "mlp"]
+    # the full catalog also lists locked display-only (deep-learning) cards
+    assert any(not c["trainable"] for c in state["model_choices"])
+    assert all(
+        "principle" in c and "performance" in c and "history" in c and "requires_gpu" in c
+        for c in state["model_choices"]
+    )
 
     client.post(
         f"/api/projects/{project_id}/data/text",
@@ -328,7 +333,7 @@ def test_train_accepts_classifier_choice_and_state_lists_choices(tmp_path: Path)
 
     bad = client.post(f"/api/projects/{project_id}/train", json={"classifier": "gpt4"})
     assert bad.status_code == 400
-    assert "可选" in bad.json()["detail"]
+    assert "可训练" in bad.json()["detail"]
 
 
 def test_train_compare_returns_rows_for_all_models(tmp_path: Path) -> None:
@@ -347,7 +352,13 @@ def test_train_compare_returns_rows_for_all_models(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     rows = response.json()["rows"]
-    assert [row["model_choice"] for row in rows] == ["decision_tree", "random_forest", "knn"]
+    assert [row["model_choice"] for row in rows] == [
+        "decision_tree",
+        "random_forest",
+        "knn",
+        "gbdt",
+        "svm",
+    ]
     assert all(row["cross_val_accuracy"] is not None for row in rows)
 
     # Compare must not persist a model: training step still required.

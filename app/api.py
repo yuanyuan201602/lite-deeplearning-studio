@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.ml import engine
 from app.ml.base import MLDataError
 from app.models import ProjectInfo, TaskDefinition
+from app.services import dataset_library
 from app.services.export_service import ExportService
 from app.services.project_service import ProjectService
 from app.task_catalog import get_task
@@ -39,6 +40,7 @@ class PredictPayload(BaseModel):
 
 class TrainPayload(BaseModel):
     classifier: str = Field(default="", max_length=40)
+    feature_mode: str = Field(default="", max_length=40)
 
 
 class ImageLabelPayload(BaseModel):
@@ -47,6 +49,23 @@ class ImageLabelPayload(BaseModel):
 
 class LoadPackPayload(BaseModel):
     pack_file: str = Field(min_length=1, max_length=80)
+
+
+class ImportDatasetPayload(BaseModel):
+    dataset_id: str = Field(min_length=1, max_length=80)
+    cap: str = Field(default="standard", max_length=20)
+
+
+def create_datasets_router(datasets_root: Path | None) -> APIRouter:
+    router = APIRouter(prefix="/api/datasets")
+
+    @router.get("")
+    def list_datasets(capability: str = "") -> list:
+        if datasets_root is None:
+            return []
+        return dataset_library.list_datasets(datasets_root, capability or None)
+
+    return router
 
 
 def create_packs_router(data_packs_root: Path) -> APIRouter:
@@ -74,6 +93,7 @@ def create_api_router(
     export_service: ExportService,
     edition: str,
     data_packs_root: Path | None = None,
+    datasets_root: Path | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/projects")
 
@@ -93,6 +113,8 @@ def create_api_router(
             "capability": task.ai_capability,
             "dataset_kind": task.sample_dataset_kind,
             "model_choices": engine.list_model_choices(task.ai_capability),
+            "feature_modes": engine.list_feature_modes(task.ai_capability),
+            "eval_count": project_service.eval_count(info),
         }
 
     @router.get("/{project_id}/state")
@@ -166,15 +188,19 @@ def create_api_router(
     def train(project_id: str, payload: TrainPayload | None = None) -> dict:
         info, task = load_project(project_id)
         model_choice = payload.classifier if payload else ""
-        report = project_service.train(info, task.ai_capability, model_choice or None)
+        feature_mode = payload.feature_mode if payload else ""
+        report = project_service.train(
+            info, task.ai_capability, model_choice or None, feature_mode or None
+        )
         state = project_state(info, task)
         state["report"] = report
         return state
 
     @router.post("/{project_id}/train/compare")
-    def train_compare(project_id: str) -> dict:
+    def train_compare(project_id: str, payload: TrainPayload | None = None) -> dict:
         info, task = load_project(project_id)
-        rows = project_service.compare_models(info, task.ai_capability)
+        feature_mode = payload.feature_mode if payload else ""
+        rows = project_service.compare_models(info, task.ai_capability, feature_mode or None)
         return {"rows": rows}
 
     @router.post("/{project_id}/predict")
@@ -222,6 +248,29 @@ def create_api_router(
         else:
             raise HTTPException(status_code=400, detail=f"不支持的样本包类型：{kind}")
         return project_state(info, task)
+
+    @router.post("/{project_id}/data/import-dataset")
+    def import_dataset(project_id: str, payload: ImportDatasetPayload) -> dict:
+        info, task = load_project(project_id)
+        if datasets_root is None:
+            raise HTTPException(status_code=503, detail="整理数据集导入未启用")
+        resolved = dataset_library.resolve_dataset(datasets_root, payload.dataset_id)
+        if resolved is None:
+            raise HTTPException(status_code=404, detail="没有找到这个数据集")
+        manifest, dataset_dir = resolved
+        if manifest["ai_capability"] != task.ai_capability:
+            raise HTTPException(status_code=400, detail="这个数据集和当前任务的类型不匹配。")
+        summary = project_service.import_platform_dataset(
+            info, task.ai_capability, dataset_dir, payload.cap
+        )
+        state = project_state(info, task)
+        state["imported"] = summary
+        return state
+
+    @router.post("/{project_id}/eval/sample")
+    def eval_sample(project_id: str) -> dict:
+        info, task = load_project(project_id)
+        return project_service.sample_eval_predict(info, task.ai_capability)
 
     @router.post("/{project_id}/export")
     def export(project_id: str) -> dict:

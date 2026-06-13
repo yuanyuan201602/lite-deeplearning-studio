@@ -21,6 +21,7 @@ __all__ = [
     "predict_capability",
     "compare_capability",
     "list_model_choices",
+    "list_feature_modes",
 ]
 
 TEXT_SAMPLES_FILE = "text_samples.json"
@@ -38,13 +39,16 @@ def train_capability(
     dataset_dir: Path,
     models_dir: Path,
     model_choice: str | None = None,
+    feature_mode: str | None = None,
 ) -> dict[str, Any]:
     if capability == "text_classifier":
         return text_classifier.train(
             _load_json_list(dataset_dir / TEXT_SAMPLES_FILE), models_dir, model_choice
         )
     if capability == "image_classifier":
-        return image_classifier.train(load_labeled_images(dataset_dir), models_dir, model_choice)
+        return image_classifier.train(
+            load_labeled_images(dataset_dir), models_dir, model_choice, feature_mode
+        )
     if capability == "audio_classifier":
         return audio_classifier.train(load_labeled_audio(dataset_dir), models_dir, model_choice)
     if capability == "qa_retrieval":
@@ -58,12 +62,14 @@ def train_capability(
     raise MLDataError(f"暂不支持这种 AI 能力：{capability}")
 
 
-def compare_capability(capability: str, dataset_dir: Path) -> list[dict[str, Any]]:
+def compare_capability(
+    capability: str, dataset_dir: Path, feature_mode: str | None = None
+) -> list[dict[str, Any]]:
     """Fit every available model on the same data; nothing is persisted."""
     if capability == "text_classifier":
         return text_classifier.compare(_load_json_list(dataset_dir / TEXT_SAMPLES_FILE))
     if capability == "image_classifier":
-        return image_classifier.compare(load_labeled_images(dataset_dir))
+        return image_classifier.compare(load_labeled_images(dataset_dir), feature_mode)
     if capability == "audio_classifier":
         return audio_classifier.compare(load_labeled_audio(dataset_dir))
     if capability == "sensor_decision_model":
@@ -72,22 +78,24 @@ def compare_capability(capability: str, dataset_dir: Path) -> list[dict[str, Any
 
 
 def list_model_choices(capability: str) -> list[dict[str, Any]]:
-    if capability == "text_classifier":
-        return classifiers.list_choice_info(
-            text_classifier.MODEL_CHOICES, text_classifier.DEFAULT_MODEL
-        )
+    modules = {
+        "text_classifier": text_classifier,
+        "image_classifier": image_classifier,
+        "audio_classifier": audio_classifier,
+        "sensor_decision_model": sensor_model,
+    }
+    module = modules.get(capability)
+    if module is None:
+        return []
+    return classifiers.list_choice_info(
+        module.MODEL_CHOICES, module.DISPLAY_CHOICES, module.DEFAULT_MODEL
+    )
+
+
+def list_feature_modes(capability: str) -> list[dict[str, Any]]:
+    """Feature-extractor options for the task (only image offers a choice)."""
     if capability == "image_classifier":
-        return classifiers.list_choice_info(
-            image_classifier.MODEL_CHOICES, image_classifier.DEFAULT_MODEL
-        )
-    if capability == "audio_classifier":
-        return classifiers.list_choice_info(
-            audio_classifier.MODEL_CHOICES, audio_classifier.DEFAULT_MODEL
-        )
-    if capability == "sensor_decision_model":
-        return classifiers.list_choice_info(
-            sensor_model.MODEL_CHOICES, sensor_model.DEFAULT_MODEL
-        )
+        return image_classifier.list_feature_modes()
     return []
 
 

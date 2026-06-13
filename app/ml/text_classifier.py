@@ -13,6 +13,7 @@ from app.ml.base import MODEL_FILE, MLDataError, class_counts, now_text, write_m
 MIN_SAMPLES_PER_CLASS = 2
 
 MODEL_CHOICES = classifiers.TEXT_CHOICES
+DISPLAY_CHOICES = classifiers.TEXT_DISPLAY
 DEFAULT_MODEL = "logistic_regression"
 
 

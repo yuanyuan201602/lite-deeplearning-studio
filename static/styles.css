@@ -623,35 +623,15 @@ h2 {
   padding: 6px 12px;
 }
 
-.teach-block summary {
-  cursor: pointer;
+.teach-block .teach-title {
+  margin: 0;
   font-size: 13px;
+  font-weight: 600;
   color: var(--soft);
-  user-select: none;
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 0;
-}
-
-.teach-block summary::-webkit-details-marker {
-  display: none;
-}
-
-.teach-block summary::before {
-  content: "▸";
-  display: inline-block;
-  transition: transform 0.15s ease;
-  font-size: 11px;
-}
-
-.teach-block[open] summary::before {
-  transform: rotate(90deg);
 }
 
 .teach-block .teach-content {
-  padding: 8px 0 6px;
+  padding: 6px 0 2px;
   font-size: 13px;
   color: var(--soft);
   line-height: 1.65;
@@ -839,6 +819,12 @@ h2 {
   margin: 12px 0 6px;
 }
 
+.field-sub {
+  margin: -2px 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .img-count {
   color: var(--muted);
   font-size: 13px;
@@ -857,6 +843,100 @@ h2 {
   padding: 16px 18px;
   border: 1px dashed var(--line);
   border-radius: var(--radius-sm);
+}
+
+.data-ready-note {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--ok);
+  background: var(--ok-soft);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ok);
+}
+
+.data-ready-note strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* ---------- import organized dataset ---------- */
+
+.dataset-import {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
+.dataset-import-title {
+  font-weight: 600;
+  color: var(--accent-deep);
+  margin-bottom: 4px;
+}
+
+.dataset-import-hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+.dataset-import-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dataset-select,
+.cap-select {
+  font: inherit;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.dataset-select {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.dataset-select:focus,
+.cap-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ---------- sample from test set (step 3) ---------- */
+
+.eval-sample {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-warm);
+}
+
+.eval-sample-hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.eval-question {
+  font-size: 15px;
+  margin: 0 0 10px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+}
+
+.eval-verdict {
+  font-weight: 600;
+  margin: 4px 0;
 }
 
 /* ---------- model picker & comparison ---------- */
@@ -889,10 +969,26 @@ h2 {
 
 .model-card-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 6px;
+}
+
+.model-title {
+  min-width: 0;
+}
+
+.model-title strong {
+  display: block;
+}
+
+.model-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex: 0 0 auto;
 }
 
 .model-school {
@@ -925,6 +1021,39 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+.model-en {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.model-history {
+  font-style: italic;
+}
+
+.model-lock {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+.model-card.locked {
+  cursor: not-allowed;
+  opacity: 0.65;
+  background: var(--surface-warm);
+}
+
+.model-card.locked:hover {
+  border-color: var(--line);
 }
 
 .compare-table {

@@ -8,6 +8,11 @@ services:
     environment:
       # all / smart_museum / future_creator
       LDS_EDITION: ${LDS_EDITION:-all}
+      # Teaching dataset library (the import dropdown reads from here)
+      LDS_DATASETS_ROOT: /app/datasets
     volumes:
       - ./workspace:/app/workspace
+      # Place the dataset pack in ./datasets on the host; mounted read-only.
+      # If the folder is absent the dropdown stays empty — the app still runs.
+      - ./datasets:/app/datasets:ro
     restart: unless-stopped

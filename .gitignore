@@ -17,6 +17,10 @@ htmlcov/
 # Pretrained ONNX models (fetched by scripts/download_pretrained.py)
 models_pretrained/
 
+# Teacher-curated teaching datasets (several GB, distributed separately).
+# No trailing slash so a local `datasets` symlink is ignored too, not just a dir.
+/datasets
+
 # Local generated project data
 .superpowers/
 .playwright-mcp/

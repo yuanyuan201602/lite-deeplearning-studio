@@ -435,6 +435,9 @@ function buildImageEditor() {
   function renderImageClasses() {
     container.innerHTML = "";
     const counts = state.dataset.class_counts || {};
+    if (Object.keys(counts).length) {
+      container.appendChild(dataReadyNote("图片"));
+    }
     for (const [label, count] of Object.entries(counts)) {
       container.appendChild(imageClassBlock(label, count));
     }
@@ -531,6 +534,9 @@ function buildAudioEditor() {
   function renderAudioClasses() {
     container.innerHTML = "";
     const counts = state.dataset.class_counts || {};
+    if (Object.keys(counts).length) {
+      container.appendChild(dataReadyNote("录音"));
+    }
     for (const [label, count] of Object.entries(counts)) {
       container.appendChild(audioClassBlock(label, count));
     }
@@ -660,6 +666,140 @@ function afterDataSaved(message) {
   setStatus("data-status", message + suffix, false);
 }
 
+// Shown above the class list once data exists, so students who imported a
+// dataset don't think they still have to use the per-class upload buttons.
+function dataReadyNote(mediaNoun) {
+  const note = el("div", "data-ready-note");
+  const title = el("strong", "", "数据已就绪，可以直接去第 2 步训练。");
+  const body = el(
+    "span",
+    "",
+    `下面每个类别的「选择文件 / 上传到这个类别」是可选的，只在你想补充自己的${mediaNoun}时才用，不点也不影响训练。`
+  );
+  note.append(title, body);
+  return note;
+}
+
+/* ---------- import an organized dataset (step 1) ---------- */
+
+const DATASET_IMPORT_KINDS = new Set(["image", "text", "audio", "sensor"]);
+const CAP_KINDS = new Set(["image", "audio"]); // only media import needs a per-class cap
+
+function mountDataEditor() {
+  dataEditor.innerHTML = "";
+  editors[kind]();
+  if (DATASET_IMPORT_KINDS.has(kind)) {
+    dataEditor.insertBefore(datasetImportRow(), dataEditor.firstChild);
+  }
+}
+
+async function fetchDatasets() {
+  try {
+    const resp = await fetch(`/api/datasets?capability=${encodeURIComponent(capability)}`);
+    return resp.ok ? await resp.json() : [];
+  } catch {
+    return [];
+  }
+}
+
+function datasetImportRow() {
+  const box = el("div", "dataset-import");
+  box.appendChild(el("div", "dataset-import-title", "从整理好的数据集导入"));
+  const hintText = CAP_KINDS.has(kind)
+    ? "选择老师整理好的数据集，一键载入训练数据。轻量/标准会随机抽取，重新导入会换一批（替换而非累加），方便用不同样本做对比实验。"
+    : "选择老师整理好的数据集，一键载入这一步的训练数据，免去逐个上传。重新导入会替换上一次的数据。";
+  const hint = el("p", "dataset-import-hint", hintText);
+  box.appendChild(hint);
+
+  const row = el("div", "dataset-import-row");
+  const select = el("select", "dataset-select");
+  select.disabled = true;
+  const loading = el("option", "", "正在加载数据集…");
+  loading.value = "";
+  select.appendChild(loading);
+  row.appendChild(select);
+
+  let capSelect = null;
+  if (CAP_KINDS.has(kind)) {
+    capSelect = el("select", "cap-select");
+    for (const [value, label] of [
+      ["light", "轻量·每类100张"],
+      ["standard", "标准·每类300张"],
+      ["full", "完全·全部"],
+    ]) {
+      const opt = el("option", "", label);
+      opt.value = value;
+      capSelect.appendChild(opt);
+    }
+    capSelect.value = "standard";
+    row.appendChild(capSelect);
+  }
+
+  const button = el("button", "btn-secondary", "导入");
+  button.type = "button";
+  button.disabled = true;
+  button.addEventListener("click", () => {
+    if (!select.value) {
+      setStatus("data-status", "请先选择一个数据集。", true);
+      return;
+    }
+    importDataset(select.value, capSelect ? capSelect.value : "standard", button);
+  });
+  row.appendChild(button);
+  box.appendChild(row);
+
+  fetchDatasets().then((datasets) => {
+    select.innerHTML = "";
+    if (!datasets.length) {
+      const opt = el("option", "", "（暂无可用的整理数据集）");
+      opt.value = "";
+      select.appendChild(opt);
+      hint.textContent = "没有检测到整理好的数据集目录，可联系老师配置 LDS_DATASETS_ROOT。";
+      return;
+    }
+    const choose = el("option", "", "请选择数据集…");
+    choose.value = "";
+    select.appendChild(choose);
+    for (const dataset of datasets) {
+      const opt = el(
+        "option",
+        "",
+        `${dataset.title}（${dataset.class_count} 类 · 训练 ${dataset.train_count}）`
+      );
+      opt.value = dataset.id;
+      select.appendChild(opt);
+    }
+    select.disabled = false;
+    button.disabled = false;
+  });
+
+  return box;
+}
+
+async function importDataset(datasetId, cap, button) {
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = "正在导入…";
+  setStatus("data-status", "正在导入数据集，请稍候（图片较多时需要一点时间）…", false);
+  try {
+    const next = await postJson("/data/import-dataset", { dataset_id: datasetId, cap });
+    Object.assign(state, next);
+    mountDataEditor();
+    mountEvalSampleButton();
+    refreshTrainWarning();
+    const imported = next.imported || {};
+    const counts = imported.class_counts || {};
+    const classes = Object.keys(counts).length;
+    const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+    const evalNote = imported.eval_count ? `，并准备了 ${imported.eval_count} 条测试样本` : "";
+    afterDataSaved(`已导入 ${classes} 个类别、共 ${total} 条训练数据${evalNote}。`);
+  } catch (error) {
+    setStatus("data-status", error.message, true);
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+
 /* ---------- training ---------- */
 
 const trainButton = document.getElementById("train-button");
@@ -669,6 +809,7 @@ const trainReport = document.getElementById("train-report");
 const trainLog = document.getElementById("train-log");
 const modelPicker = document.getElementById("model-picker");
 let selectedClassifier = "";
+let selectedFeatureMode = "";
 
 /* 数据量预警：样本太少时在训练面板提示 */
 const MIN_PER_CLASS = 10;
@@ -745,6 +886,65 @@ if (capability === "ocr_typo_checker") {
   trainButton.textContent = "保存正确文字";
 }
 
+function buildFeaturePicker() {
+  const modes = state.feature_modes || [];
+  if (!modes.length) return;
+  const heading = el("p", "field-label", "特征提取方式");
+  const hint = el(
+    "p",
+    "field-sub",
+    "先决定怎么把图片变成数字特征，再选下面的分类模型。"
+  );
+  const grid = el("div", "model-grid");
+  for (const mode of modes) {
+    const locked = mode.available === false;
+    const card = el("div", `model-card${locked ? " locked" : ""}`);
+    card.dataset.mode = mode.mode;
+    const head = el("div", "model-card-head");
+    const title = el("div", "model-title");
+    title.appendChild(el("strong", "", mode.name));
+    if (mode.en_name) title.appendChild(el("span", "model-en", mode.en_name));
+    head.appendChild(title);
+    if (locked) {
+      const badges = el("div", "model-badges");
+      badges.appendChild(el("span", "model-lock", "需下载模型"));
+      head.appendChild(badges);
+    }
+    card.appendChild(head);
+    card.appendChild(el("p", "model-principle", `作用：${mode.principle}`));
+    if (mode.performance) {
+      const meta = el("ul", "model-meta");
+      meta.appendChild(el("li", "model-perf", `效能：${mode.performance}`));
+      card.appendChild(meta);
+    }
+    if (locked) {
+      card.setAttribute("aria-disabled", "true");
+      card.title = "需要先运行 python scripts/download_pretrained.py 下载 MobileNet 模型。";
+      grid.appendChild(card);
+      continue;
+    }
+    const select = () => {
+      selectedFeatureMode = mode.mode;
+      grid.querySelectorAll(".model-card").forEach((node) =>
+        node.classList.toggle("selected", node === card)
+      );
+    };
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.addEventListener("click", select);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") select();
+    });
+    if (mode.default && !selectedFeatureMode) {
+      selectedFeatureMode = mode.mode;
+      card.classList.add("selected");
+    }
+    grid.appendChild(card);
+  }
+  modelPicker.append(heading, hint, grid);
+}
+buildFeaturePicker();
+
 function buildModelPicker() {
   const choices = state.model_choices || [];
   if (!choices.length) return;
@@ -755,20 +955,42 @@ function buildModelPicker() {
   const heading = el("p", "field-label", "选择模型");
   const grid = el("div", "model-grid");
   for (const choice of choices) {
-    const card = el("div", "model-card");
+    const locked = choice.trainable === false;
+    const card = el("div", `model-card${locked ? " locked" : ""}`);
     card.dataset.slug = choice.slug;
-    card.tabIndex = 0;
-    card.setAttribute("role", "button");
+
     const head = el("div", "model-card-head");
-    head.appendChild(el("strong", "", choice.name));
-    head.appendChild(el("span", "model-school", choice.school));
+    const title = el("div", "model-title");
+    title.appendChild(el("strong", "", choice.name));
+    if (choice.en_name) title.appendChild(el("span", "model-en", choice.en_name));
+    head.appendChild(title);
+    const badges = el("div", "model-badges");
+    badges.appendChild(el("span", "model-school", choice.school));
+    if (locked) {
+      badges.appendChild(el("span", "model-lock", choice.requires_gpu ? "需显卡" : "展示"));
+    }
+    head.appendChild(badges);
     card.appendChild(head);
-    card.appendChild(el("p", "model-principle", choice.principle));
+
+    card.appendChild(el("p", "model-principle", `作用：${choice.principle}`));
     const meta = el("ul", "model-meta");
+    if (choice.performance) meta.appendChild(el("li", "model-perf", `效能：${choice.performance}`));
     meta.appendChild(el("li", "model-pro", `优点：${choice.strengths}`));
     meta.appendChild(el("li", "model-con", `局限：${choice.weaknesses}`));
-    meta.appendChild(el("li", "model-fit", `适合：${choice.best_for}`));
+    if (choice.history) meta.appendChild(el("li", "model-history", `简史：${choice.history}`));
     card.appendChild(meta);
+
+    if (locked) {
+      card.setAttribute("aria-disabled", "true");
+      card.title = choice.requires_gpu
+        ? "这是深度学习模型，需要显卡训练，暂未在平台内启用。"
+        : "这个算法暂未启用为训练选项，仅作了解。";
+      grid.appendChild(card);
+      continue;
+    }
+
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
     const select = () => {
       selectedClassifier = choice.slug;
       grid.querySelectorAll(".model-card").forEach((node) =>
@@ -795,12 +1017,19 @@ trainButton.addEventListener("click", async () => {
   trainReport.innerHTML = "";
   trainLog.hidden = false;
   trainLog.innerHTML = "";
-  logLine(`$ python train.py${selectedClassifier ? ` --model ${selectedClassifier}` : ""}`, "log-cmd");
+  const featureFlag = selectedFeatureMode ? ` --features ${selectedFeatureMode}` : "";
+  logLine(
+    `$ python train.py${selectedClassifier ? ` --model ${selectedClassifier}` : ""}${featureFlag}`,
+    "log-cmd"
+  );
   const running = logLine("正在训练", "log-run");
   trainLog.scrollIntoView({ behavior: "smooth", block: "nearest" });
   const startedAt = performance.now();
   try {
-    const next = await postJson("/train", { classifier: selectedClassifier });
+    const next = await postJson("/train", {
+      classifier: selectedClassifier,
+      feature_mode: selectedFeatureMode,
+    });
     const elapsedMs = performance.now() - startedAt;
     running.remove();
     await playTrainingLog(next.report, elapsedMs);
@@ -821,9 +1050,9 @@ trainButton.addEventListener("click", async () => {
 
 compareButton.addEventListener("click", async () => {
   compareButton.disabled = true;
-  setStatus("train-status", "正在用同一份数据训练所有模型……", false);
+  setStatus("train-status", "正在让各模型在同一份数据上比一比……（数据多时取样本，几秒完成）", false);
   try {
-    const result = await postJson("/train/compare", {});
+    const result = await postJson("/train/compare", { feature_mode: selectedFeatureMode });
     renderCompareTable(result.rows);
     setStatus("train-status", "对比完成。点中意的模型卡片，再点「开始训练」正式训练。", false);
   } catch (error) {
@@ -865,7 +1094,8 @@ function renderCompareTable(rows) {
   note.textContent =
     "★ 是交叉验证最高的模型。交叉验证比训练准确率更接近真实水平；" +
     "如果某个模型训练准确率很高但交叉验证低很多，说明它在“死记硬背”（过拟合）。" +
-    "每类数据满 3 条才能算交叉验证。";
+    "每类数据满 3 条才能算交叉验证。" +
+    "对比是快速比拼，数据较多时会随机取部分样本以保证速度；正式训练你选中的模型时仍用全部数据。";
   card.appendChild(note);
   compareResult.appendChild(card);
 }
@@ -897,10 +1127,19 @@ function renderTrainReport(report) {
   }
   if (report.feature_mode) {
     const note = el("p", "report-classes");
-    note.textContent =
-      report.feature_mode === "mobilenet_v2"
-        ? "特征提取：MobileNet 迁移学习——用在上百万张图片上预训练好的网络理解你的图片，少量样本也能学得稳。"
-        : "特征提取：原始像素（基础模式）。让老师运行 python scripts/download_pretrained.py 可升级为 MobileNet 迁移学习。";
+    const mobilenetReady = (state.feature_modes || []).some(
+      (m) => m.mode === "mobilenet_v2" && m.available
+    );
+    if (report.feature_mode === "mobilenet_v2") {
+      note.textContent =
+        "特征提取：MobileNet 迁移学习——用在上百万张图片上预训练好的网络理解你的图片，少量样本也能学得稳。";
+    } else if (mobilenetReady) {
+      note.textContent =
+        "特征提取：原始像素（你选择的轻量模式）。换成上面的「MobileNet 迁移学习」通常更准、更稳，可作对照。";
+    } else {
+      note.textContent =
+        "特征提取：原始像素（基础模式）。让老师运行 python scripts/download_pretrained.py 可升级为 MobileNet 迁移学习。";
+    }
     card.appendChild(note);
   }
   if (report.class_counts && Object.keys(report.class_counts).length) {
@@ -1132,6 +1371,76 @@ function renderPredictResult(result) {
   testResult.appendChild(card);
 }
 
+/* ---------- sample from the imported test set (step 3) ---------- */
+
+const EVAL_SAMPLE_KINDS = new Set(["text", "image", "audio"]);
+
+function mountEvalSampleButton() {
+  const existing = document.getElementById("eval-sample-wrap");
+  if (existing) existing.remove();
+  if ((state.eval_count || 0) > 0 && EVAL_SAMPLE_KINDS.has(kind)) {
+    testArea.insertBefore(evalSampleWrap(), testArea.firstChild);
+  }
+}
+
+function evalSampleWrap() {
+  const wrap = el("div", "eval-sample");
+  wrap.id = "eval-sample-wrap";
+  wrap.appendChild(
+    el(
+      "p",
+      "eval-sample-hint",
+      "数据集自带测试集（训练时模型没见过）。点下面随机抽一题，检验真实效果。"
+    )
+  );
+  const button = el("button", "btn-secondary", "从测试集随机抽一题");
+  button.type = "button";
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      const sample = await postJson("/eval/sample", {});
+      renderEvalSample(sample);
+      stepsDone[2] = true;
+      refreshChecks();
+    } catch (error) {
+      renderPredictError(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+  wrap.appendChild(button);
+  return wrap;
+}
+
+function renderEvalSample(sample) {
+  testResult.innerHTML = "";
+  const card = el("div", "result-card");
+
+  if (sample.kind === "text") {
+    card.appendChild(el("p", "eval-question", `测试文本：${sample.text}`));
+  } else if (sample.kind === "image" && sample.image_data_url) {
+    const img = el("img", "test-preview");
+    img.src = sample.image_data_url;
+    card.appendChild(img);
+  }
+
+  const prediction = sample.prediction || {};
+  const correct = prediction.label === sample.true_label;
+  card.appendChild(
+    el(
+      "p",
+      `eval-verdict ${correct ? "status-ok" : "status-error"}`,
+      correct ? "✓ 模型答对了" : "✗ 模型答错了"
+    )
+  );
+  card.appendChild(el("p", "result-sub", `正确答案：${sample.true_label}`));
+  card.appendChild(el("p", "result-main", `模型识别：${prediction.label ?? "—"}`));
+  if (prediction.scores) {
+    card.appendChild(scoreBars(prediction.scores));
+  }
+  testResult.appendChild(card);
+}
+
 /* ---------- export ---------- */
 
 const exportButton = document.getElementById("export-button");
@@ -1177,7 +1486,7 @@ const editors = {
   image: buildImageEditor,
   audio: buildAudioEditor,
 };
-editors[kind]();
+mountDataEditor();
 
 const testBuilders = {
   text: () => buildTextTest("输入一句新的话，看看模型分到哪个类别。", "测试分类"),
@@ -1188,6 +1497,7 @@ const testBuilders = {
   audio: buildAudioTest,
 };
 testBuilders[kind]();
+mountEvalSampleButton();
 
 refreshChecks();
 showStep(0);

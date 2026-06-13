@@ -67,6 +67,7 @@ def test_text_classifier_compare_reports_all_models(tmp_path: Path) -> None:
         "logistic_regression",
         "naive_bayes",
         "random_forest",
+        "mlp",
     ]
     for row in rows:
         assert 0.0 <= row["train_accuracy"] <= 1.0
@@ -104,6 +105,53 @@ def test_image_classifier_knn_choice(tmp_path: Path) -> None:
 
     result = image_classifier.predict(tmp_path, make_image_bytes((215, 65, 62)))
     assert result["label"] == "红色卡片"
+
+
+def _two_color_dataset() -> dict[str, list[bytes]]:
+    return {
+        "红色卡片": [make_image_bytes((220, 60 + i, 60)) for i in range(4)],
+        "绿色卡片": [make_image_bytes((60, 170 + i, 90)) for i in range(4)],
+    }
+
+
+@pytest.mark.parametrize("choice", ["gbdt", "mlp"])
+def test_image_classifier_new_trainable_algorithms(tmp_path: Path, choice: str) -> None:
+    # gbdt/mlp must work through the predict_proba path the score bars rely on.
+    report = image_classifier.train(_two_color_dataset(), tmp_path, model_choice=choice)
+    assert report["model_choice"] == choice
+    result = image_classifier.predict(tmp_path, make_image_bytes((225, 60, 60)))
+    assert result["label"] in {"红色卡片", "绿色卡片"}
+    assert abs(sum(result["scores"].values()) - 1.0) < 1e-6
+
+
+def test_sensor_svm_choice(tmp_path: Path) -> None:
+    raw_csv = "心率,体温,动作\n110,38.6,提醒\n72,36.5,观察\n118,39.2,提醒\n68,36.8,观察\n"
+    report = sensor_model.train(raw_csv, tmp_path, model_choice="svm")
+    assert report["model_choice"] == "svm"
+    assert sensor_model.predict(tmp_path, {"心率": "120", "体温": "39"})["label"] in {"提醒", "观察"}
+
+
+def test_display_only_models_are_rejected_for_training(tmp_path: Path) -> None:
+    # Deep-learning cards are shown for learning but cannot be trained in-app.
+    assert "mobilenet" in image_classifier.DISPLAY_CHOICES
+    with pytest.raises(MLDataError):
+        image_classifier.train(_two_color_dataset(), tmp_path, model_choice="mobilenet")
+
+
+def test_image_feature_mode_choice(tmp_path: Path) -> None:
+    from app.ml import engine
+
+    modes = {m["mode"] for m in engine.list_feature_modes("image_classifier")}
+    assert modes == {"mobilenet_v2", "pixel"}
+    assert engine.list_feature_modes("text_classifier") == []
+
+    report = image_classifier.train(
+        _two_color_dataset(), tmp_path, model_choice="logistic_regression", feature_mode="pixel"
+    )
+    assert report["feature_mode"] == "pixel"
+
+    with pytest.raises(MLDataError):
+        image_classifier.train(_two_color_dataset(), tmp_path, feature_mode="resnet")
 
 
 def test_text_classifier_trains_and_predicts(tmp_path: Path) -> None:

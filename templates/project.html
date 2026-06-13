@@ -33,10 +33,10 @@
       <h2>{{ step_labels[0] }}</h2>
       <p class="panel-hint" id="data-hint"></p>
       {% if task.step_guides|length > 0 %}
-        <details class="teach-block">
-          <summary>了解这一步</summary>
+        <div class="teach-block">
+          <p class="teach-title">了解这一步</p>
           <div class="teach-content">{{ task.step_guides[0] }}</div>
-        </details>
+        </div>
       {% endif %}
     </div>
     <div id="data-editor"></div>
@@ -51,10 +51,10 @@
       <h2>{{ step_labels[1] }}</h2>
       <p class="panel-hint" id="train-hint">点击按钮，电脑会从你的数据中学习规律。数据越多越准确。</p>
       {% if task.step_guides|length > 1 %}
-        <details class="teach-block">
-          <summary>了解这一步</summary>
+        <div class="teach-block">
+          <p class="teach-title">了解这一步</p>
           <div class="teach-content">{{ task.step_guides[1] }}</div>
-        </details>
+        </div>
       {% endif %}
     </div>
     <div id="model-picker"></div>
@@ -73,10 +73,10 @@
       <h2>{{ step_labels[2] }}</h2>
       <p class="panel-hint" id="test-hint">用一条新数据试试模型学得怎么样。</p>
       {% if task.step_guides|length > 2 %}
-        <details class="teach-block">
-          <summary>了解这一步</summary>
+        <div class="teach-block">
+          <p class="teach-title">了解这一步</p>
           <div class="teach-content">{{ task.step_guides[2] }}</div>
-        </details>
+        </div>
       {% endif %}
     </div>
     <div id="test-area"></div>
@@ -90,10 +90,10 @@
         导出包里有：训练好的模型、全部数据、可运行的 Python 程序、{{ hardware_labels[info.target_hardware] }}部署说明和比赛提交清单。
       </p>
       {% if task.step_guides|length > 3 %}
-        <details class="teach-block">
-          <summary>了解这一步</summary>
+        <div class="teach-block">
+          <p class="teach-title">了解这一步</p>
           <div class="teach-content">{{ task.step_guides[3] }}</div>
-        </details>
+        </div>
       {% endif %}
     </div>
     <div class="panel-actions">

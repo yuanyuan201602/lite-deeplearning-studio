@@ -23,6 +23,7 @@ MAX_AUDIO_BYTES = 10 * 1024 * 1024
 MIN_CLIPS_PER_CLASS = 2
 
 MODEL_CHOICES = classifiers.DENSE_CHOICES
+DISPLAY_CHOICES = classifiers.AUDIO_DISPLAY
 DEFAULT_MODEL = "logistic_regression"
 
 
@@ -145,7 +146,8 @@ def train(
 
 
 def compare(labeled_clips: dict[str, list[bytes]]) -> list[dict[str, Any]]:
-    features, labels = _prepare_features(labeled_clips)
+    # Sample before feature extraction to keep the race fast on large datasets.
+    features, labels = _prepare_features(classifiers.subsample_labeled(labeled_clips))
     counts = class_counts(labels)
     return classifiers.compare_rows(
         MODEL_CHOICES,
