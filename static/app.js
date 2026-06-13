@@ -887,7 +887,7 @@ async function playTrainingLog(report, elapsedMs) {
   if (report.cross_val_accuracy) {
     logLine(`[4/4] 交叉验证：把数据分组轮流考试，平均分 ${percent(report.cross_val_accuracy)}`, "log-ok");
   } else if (report.train_accuracy !== null && report.train_accuracy !== undefined) {
-    logLine("[4/4] 交叉验证：数据不够，跳过（每类 10 条以上才能模拟考试）", "log-warn");
+    logLine("[4/4] 交叉验证：本次每类样本不足 3 条，跳过这一步（不影响训练，多补些数据即可恢复）。", "log-warn");
   } else {
     logLine("[4/4] 已建立检索索引", "log-ok");
   }
