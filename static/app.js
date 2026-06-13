@@ -179,15 +179,29 @@ function showStep(index) {
   });
 }
 
+function isStepUnlocked(index) {
+  if (index === 0) return true;
+  return stepsDone[index - 1] || stepsDone[index];
+}
+
+function refreshLocks() {
+  stepButtons.forEach((button, i) => {
+    button.classList.toggle("step-locked", !isStepUnlocked(i));
+  });
+}
+
 function refreshChecks() {
   stepButtons.forEach((button, i) => {
     button.querySelector(".step-check").hidden = !stepsDone[i];
   });
+  refreshLocks();
   refreshTrainWarning();
 }
 
 stepButtons.forEach((button, index) => {
-  button.addEventListener("click", () => showStep(index));
+  button.addEventListener("click", () => {
+    if (isStepUnlocked(index)) showStep(index);
+  });
 });
 
 /* ---------- data editors ---------- */

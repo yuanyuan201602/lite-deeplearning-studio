@@ -570,6 +570,14 @@ h2 {
   background: var(--accent-soft);
 }
 
+.step-locked {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.step-locked:hover {
+  border-color: var(--line);
+}
+
 .step-num {
   display: inline-flex;
   align-items: center;
