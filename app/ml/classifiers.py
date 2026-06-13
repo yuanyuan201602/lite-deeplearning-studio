@@ -37,7 +37,9 @@ CROSS_VAL_MIN_PER_CLASS = 3
 # fitted + cross-validated on a few thousand high-dim samples can take minutes,
 # which looks like a hang. Cap the race to a stratified sample so it stays snappy
 # regardless of dataset size; the chosen model is still trained on all the data.
-COMPARE_MAX_SAMPLES = 300
+# Cost is dominated by fitting 5 models (incl. cross-validation) and scales with the
+# class count, so this cap is kept modest — the race only needs to rank models.
+COMPARE_MAX_SAMPLES = 200
 
 # ---- trainable estimators (CPU, joblib-exportable) ----
 

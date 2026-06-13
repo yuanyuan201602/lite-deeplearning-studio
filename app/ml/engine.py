@@ -69,9 +69,10 @@ def compare_capability(
     if capability == "text_classifier":
         return text_classifier.compare(_load_json_list(dataset_dir / TEXT_SAMPLES_FILE))
     if capability == "image_classifier":
-        return image_classifier.compare(load_labeled_images(dataset_dir), feature_mode)
+        sampled = load_labeled_images(dataset_dir, classifiers.COMPARE_MAX_SAMPLES)
+        return image_classifier.compare(sampled, feature_mode)
     if capability == "audio_classifier":
-        return audio_classifier.compare(load_labeled_audio(dataset_dir))
+        return audio_classifier.compare(load_labeled_audio(dataset_dir, classifiers.COMPARE_MAX_SAMPLES))
     if capability == "sensor_decision_model":
         return sensor_model.compare(_load_text(dataset_dir / SENSOR_CSV_FILE))
     raise MLDataError("这个任务只有一种处理方式，不需要对比模型。")
@@ -121,30 +122,36 @@ def predict_capability(capability: str, models_dir: Path, payload: dict[str, Any
     raise MLDataError(f"暂不支持这种 AI 能力：{capability}")
 
 
-def load_labeled_images(dataset_dir: Path) -> dict[str, list[bytes]]:
-    labels_path = dataset_dir / IMAGE_LABELS_FILE
+def _load_labeled_media(
+    dataset_dir: Path, labels_file: str, media_dir: str, missing_hint: str, sample_cap: int | None
+) -> dict[str, list[bytes]]:
+    labels_path = dataset_dir / labels_file
     if not labels_path.is_file():
-        raise MLDataError("还没有上传图片，请先给每个类别上传图片。")
+        raise MLDataError(missing_hint)
     label_map: dict[str, str] = json.loads(labels_path.read_text(encoding="utf-8"))
-    labeled_images: dict[str, list[bytes]] = {}
-    for folder_name, label in label_map.items():
-        folder = dataset_dir / IMAGES_DIR / folder_name
-        images = [path.read_bytes() for path in sorted(folder.glob("*")) if path.is_file()]
-        labeled_images[label] = images
-    return labeled_images
+    paths_by_label: dict[str, list[Path]] = {
+        label: [p for p in sorted((dataset_dir / media_dir / folder).glob("*")) if p.is_file()]
+        for folder, label in label_map.items()
+    }
+    # For "对比所有模型" we only need a small stratified sample; sampling the paths
+    # before reading avoids loading every file's bytes (hundreds of MB) into memory.
+    if sample_cap is not None:
+        paths_by_label = classifiers.subsample_labeled(paths_by_label, sample_cap)
+    return {label: [p.read_bytes() for p in paths] for label, paths in paths_by_label.items()}
 
 
-def load_labeled_audio(dataset_dir: Path) -> dict[str, list[bytes]]:
-    labels_path = dataset_dir / AUDIO_LABELS_FILE
-    if not labels_path.is_file():
-        raise MLDataError("还没有录入声音，请先给每个类别录几段声音。")
-    label_map: dict[str, str] = json.loads(labels_path.read_text(encoding="utf-8"))
-    labeled_audio: dict[str, list[bytes]] = {}
-    for folder_name, label in label_map.items():
-        folder = dataset_dir / AUDIO_DIR / folder_name
-        clips = [path.read_bytes() for path in sorted(folder.glob("*")) if path.is_file()]
-        labeled_audio[label] = clips
-    return labeled_audio
+def load_labeled_images(dataset_dir: Path, sample_cap: int | None = None) -> dict[str, list[bytes]]:
+    return _load_labeled_media(
+        dataset_dir, IMAGE_LABELS_FILE, IMAGES_DIR,
+        "还没有上传图片，请先给每个类别上传图片。", sample_cap,
+    )
+
+
+def load_labeled_audio(dataset_dir: Path, sample_cap: int | None = None) -> dict[str, list[bytes]]:
+    return _load_labeled_media(
+        dataset_dir, AUDIO_LABELS_FILE, AUDIO_DIR,
+        "还没有录入声音，请先给每个类别录几段声音。", sample_cap,
+    )
 
 
 def _load_json_list(path: Path) -> list[dict[str, str]]:
