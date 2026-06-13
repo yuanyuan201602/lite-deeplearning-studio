@@ -23,6 +23,35 @@ http://<服务器IP>:8000
 
 学生项目数据保存在宿主机的 `./workspace` 目录，容器重建不会丢失。
 
+## 教学数据集（可选）
+
+平台第 1 步「准备数据」里的「从整理好的数据集导入」下拉，读取的是一个**整理好的教学数据集目录**。这个目录体积较大（几个 GB），不放进代码仓库，也不进 git，需要单独迁移。
+
+- 默认位置：项目根目录下的 `datasets/`（已在 `.gitignore` 中忽略）。
+- 可用环境变量 `LDS_DATASETS_ROOT` 指向别处。
+- **目录不存在也不影响运行**——只是导入下拉为空，学生仍可手动上传数据。
+
+### 本机 / 开发机
+
+把整理好的数据集包放到 `./datasets`，或建一个软链接指向它：
+
+```bash
+ln -s /path/to/OpenHydra-平台数据集 datasets
+```
+
+### 服务器（Docker）
+
+`docker-compose.yml` 已经把宿主机的 `./datasets` 以只读方式挂载到容器，并设置了 `LDS_DATASETS_ROOT=/app/datasets`。把数据集包放到服务器的 `./datasets` 即可：
+
+```bash
+# 在服务器项目根目录
+mkdir -p datasets
+rsync -av --progress 整理好的数据集包/ datasets/
+docker compose up -d --build
+```
+
+> 数据集多为几 GB，首次同步较慢。若远程只给学生手动上传用，可以不放数据集，留空即可。
+
 ## 选择竞赛版本和端口
 
 通过环境变量切换，例如部署智能博物轻量版到 8080 端口：

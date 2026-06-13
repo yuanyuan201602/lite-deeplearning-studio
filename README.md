@@ -79,6 +79,8 @@ docker compose up -d --build
 
 支持 `LDS_EDITION` / `LDS_PORT` 环境变量切换版本和端口，学生数据持久化在 `workspace/`。详见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
 
+整理好的教学数据集放在 `datasets/`（几个 GB，不进 git，单独迁移；可用 `LDS_DATASETS_ROOT` 改路径）。供第 1 步「从整理好的数据集导入」使用，缺省也不影响手动上传。格式规范见 [docs/DATASET_FORMAT.md](docs/DATASET_FORMAT.md)。
+
 ## 常用命令
 
 ```bash
