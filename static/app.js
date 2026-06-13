@@ -336,6 +336,15 @@ function packButton() {
   return btn;
 }
 
+// Demote the built-in samples to a divided footer, so the primary path
+// (your own data / the imported dataset above) reads first.
+function packFooter() {
+  const wrap = el("div", "pack-footer");
+  wrap.appendChild(el("span", "pack-footer-label", "没有数据？也可以先用内置小样本快速体验："));
+  wrap.appendChild(packButton());
+  return wrap;
+}
+
 function collectLink() {
   const a = document.createElement("a");
   a.className = "btn-ghost";
@@ -381,7 +390,7 @@ function buildTextEditor() {
     }
     await saveData(() => postJson("/data/text", { samples }));
   };
-  dataEditor.appendChild(packButton());
+  dataEditor.appendChild(packFooter());
 }
 
 function buildQaEditor() {
@@ -406,7 +415,7 @@ function buildQaEditor() {
       });
     await saveData(() => postJson("/data/qa", { pairs }));
   };
-  dataEditor.appendChild(packButton());
+  dataEditor.appendChild(packFooter());
 }
 
 function buildSensorEditor() {
@@ -421,7 +430,7 @@ function buildSensorEditor() {
   saveButton.onclick = async () => {
     await saveData(() => postJson("/data/sensor", { csv: textarea.value }));
   };
-  dataEditor.appendChild(packButton());
+  dataEditor.appendChild(packFooter());
 }
 
 function buildOcrEditor() {
