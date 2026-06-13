@@ -1,0 +1,169 @@
+{# Global tutorial drawer. Included from base.html so it is reachable on every page.
+   The trigger button lives in the topnav (base.html); this partial holds the scrim + drawer. #}
+<div class="tutorial-scrim" id="tutorial-scrim" hidden></div>
+
+<aside
+  class="tutorial-drawer"
+  id="tutorial-drawer"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="tutorial-title"
+  hidden
+>
+  <header class="tutorial-head">
+    <div>
+      <p class="tutorial-eyebrow">✻ 新手教程</p>
+      <h2 id="tutorial-title">从数据到模型：AI 项目入门</h2>
+    </div>
+    <button class="tutorial-close" id="tutorial-close" type="button" aria-label="关闭教程">×</button>
+  </header>
+
+  <nav class="tutorial-toc" aria-label="教程目录">
+    <a href="#tut-ch1">1 · 什么是机器学习</a>
+    <a href="#tut-ch2">2 · 一个 AI 项目的四步</a>
+    <a href="#tut-ch3">3 · 五种任务怎么选</a>
+    <a href="#tut-ch4">4 · 核心概念速查</a>
+    <a href="#tut-ch5">5 · 常见报错怎么办</a>
+    <a href="#tut-ch6">6 · 怎样算成功 · 如何更准</a>
+  </nav>
+
+  <div class="tutorial-body">
+    <p class="tutorial-lead">
+      这份教程把「原理」和「动手」放在一起讲：先用生活里的例子说清机器学习是怎么回事，
+      再带你走一遍真实的四步流程。读完你就能独立完成一个属于自己的 AI 模型。
+    </p>
+
+    <section class="tut-chapter" id="tut-ch1">
+      <h3>第 1 章 · 什么是机器学习</h3>
+      <p>
+        想象你要教一个小朋友认水果。你不会去背一长串规则（「红的圆的可能是苹果……」），
+        而是拿很多苹果和香蕉的照片给他看，每张都告诉他这是什么。看得多了，
+        他自己就总结出了区分的窍门——再拿一张新照片，他一眼就认出来了。
+      </p>
+      <p><strong>机器学习就是让电脑用同样的方式学习：给它大量「带答案的例子」，它自己找规律。</strong></p>
+      <div class="tut-flow">
+        <span>数据</span><i>→</i><span>训练</span><i>→</i><span>模型</span><i>→</i><span>预测</span>
+      </div>
+      <ul class="tut-list">
+        <li><b>数据</b>：你收集的带标签例子（照片、句子、声音、数值……）。</li>
+        <li><b>训练</b>：电脑反复看这些例子、自己总结规律的过程。</li>
+        <li><b>模型</b>：训练后得到的「会判断的程序」，是这次学习的成果。</li>
+        <li><b>预测</b>：把一条新的、没见过的数据交给模型，让它给出答案。</li>
+      </ul>
+      <p class="tut-note">
+        和传统编程的区别：传统编程是<strong>人把规则写死</strong>；机器学习是
+        <strong>人给例子，电脑自己总结规则</strong>。例子越多、越有代表性，规律就越靠谱。
+      </p>
+    </section>
+
+    <section class="tut-chapter" id="tut-ch2">
+      <h3>第 2 章 · 一个 AI 项目的四步</h3>
+      <p>本平台上的每个任务都按同样的四步走，必须按顺序完成——做完前一步，下一步才会解锁。</p>
+
+      <div class="tut-step">
+        <h4><span class="tut-step-num">1</span>准备数据</h4>
+        <p>给每个类别起名字，再放进足够多、足够多样的例子。</p>
+        <p class="tut-step-meta"><b>对应理论：</b>这一步在搭「训练集」，模型之后学到的全部规律都来自这里。
+        <b>注意：</b>至少 2 个类别，每个类别例子越多越好，且要尽量不一样（别复制粘贴同一条）。</p>
+      </div>
+
+      <div class="tut-step">
+        <h4><span class="tut-step-num">2</span>训练模型</h4>
+        <p>点一下按钮，电脑就开始从你的数据里找规律，几秒到几十秒后给出一份训练报告。</p>
+        <p class="tut-step-meta"><b>对应理论：</b>这就是「训练」。报告里的<b>交叉验证准确率</b>反映模型对
+        <i>没见过</i>的数据判断得准不准，比训练准确率更可信。
+        <b>注意：</b>训练准确率高但交叉验证低，说明模型在「死记」例子，要回第 1 步补数据。</p>
+      </div>
+
+      <div class="tut-step">
+        <h4><span class="tut-step-num">3</span>测试效果</h4>
+        <p>输入一条全新的数据，看模型预测得对不对、有多大把握（置信度）。</p>
+        <p class="tut-step-meta"><b>对应理论：</b>用「测试数据」检验模型，测试数据必须是训练时<i>没用过</i>的，否则不算数。
+        <b>注意：</b>预测错或置信度很低，通常是训练例子不够或类别太像，回第 1 步补充。</p>
+      </div>
+
+      <div class="tut-step">
+        <h4><span class="tut-step-num">4</span>导出材料</h4>
+        <p>一键打包成 zip：训练好的模型、你的全部数据、可运行的 Python 程序、硬件部署说明和比赛提交清单。</p>
+        <p class="tut-step-meta"><b>对应理论：</b>把模型变成能在别的电脑/硬件上跑的「作品」。
+        <b>注意：</b>在自己电脑上运行包里的 <code>predict.py</code> 能验证模型是否正常——这也是比赛评审的核心环节。</p>
+      </div>
+    </section>
+
+    <section class="tut-chapter" id="tut-ch3">
+      <h3>第 3 章 · 五种任务怎么选</h3>
+      <p>「机器学习任务」里的五个练习，本质都是「输入 → 输出」，区别只在输入是什么、输出是什么。</p>
+      <table class="tut-table">
+        <thead><tr><th>任务</th><th>输入 → 输出</th><th>什么时候用</th></tr></thead>
+        <tbody>
+          <tr><td>图像分类</td><td>图片 → 类别</td><td>认水果、分垃圾、识别手势</td></tr>
+          <tr><td>文本分类</td><td>句子 → 类别</td><td>判断好评差评、给留言分主题</td></tr>
+          <tr><td>语音分类</td><td>声音片段 → 类别</td><td>区分「开灯/关灯」等短指令</td></tr>
+          <tr><td>问答检索</td><td>问题 → 知识库里最匹配的答案</td><td>做一个能回答常见问题的小助手</td></tr>
+          <tr><td>传感器决策</td><td>一组数值 → 一个动作</td><td>温度湿度 → 决定开窗还是开风扇</td></tr>
+        </tbody>
+      </table>
+      <p class="tut-note">
+        问答检索是<strong>从你写好的知识库里「找」答案</strong>，不是像大模型那样「自由编」答案——
+        所以答案准不准，全看你的知识库写得好不好。
+      </p>
+    </section>
+
+    <section class="tut-chapter" id="tut-ch4">
+      <h3>第 4 章 · 核心概念速查</h3>
+      <p>遇到不懂的词，回这里查。都用一句话 + 例子解释。</p>
+      <dl class="tut-glossary">
+        <dt>数据集</dt><dd>你收集的全部例子的总和，比如「100 张水果照片」。</dd>
+        <dt>样本</dt><dd>数据集里的一条例子，比如其中的「一张苹果照片」。</dd>
+        <dt>标签</dt><dd>告诉电脑这条样本的正确答案，比如这张照片的标签是「苹果」。</dd>
+        <dt>类别</dt><dd>所有可能的答案种类，比如「苹果 / 香蕉」就是两个类别。</dd>
+        <dt>特征</dt><dd>电脑从样本里提取的、用来判断的线索，比如颜色、形状、纹理。</dd>
+        <dt>训练</dt><dd>电脑反复看带标签的样本、自己总结规律的过程。</dd>
+        <dt>模型</dt><dd>训练得到的「会判断的程序」，是学习的成果。</dd>
+        <dt>测试</dt><dd>用没参与训练的新样本，检验模型学得好不好。</dd>
+        <dt>预测</dt><dd>把一条新数据交给模型，让它给出答案。</dd>
+        <dt>准确率</dt><dd>模型判断对的比例。100% 表示全对，50% 在两类问题里约等于「瞎猜」。</dd>
+        <dt>交叉验证准确率</dt><dd>把数据轮流分成「学的部分」和「考的部分」反复检验得到的准确率，比训练准确率更能反映真实水平。</dd>
+        <dt>置信度</dt><dd>模型对这次预测有多大把握，0–100%。越高越「确定」。</dd>
+        <dt>过拟合</dt><dd>模型只会「背」训练例子，换个角度/说法就出错。常因例子太少或太相似。</dd>
+        <dt>训练数据 vs 测试数据</dt><dd>训练数据用来「学」，测试数据用来「考」。考试题不能提前给答案，否则成绩不真实。</dd>
+        <dt>传感器输入 vs 动作输出</dt><dd>传感器输入是测到的数值（温度、光线……），动作输出是据此要做的事（开窗、报警……）。</dd>
+        <dt>检索式问答 vs 生成式问答</dt><dd>检索式从现成知识库里「找」最匹配的答案；生成式像大模型那样「现写」答案。本平台是检索式。</dd>
+      </dl>
+    </section>
+
+    <section class="tut-chapter" id="tut-ch5">
+      <h3>第 5 章 · 常见报错怎么办</h3>
+      <p>看到提示别慌，对照下面找原因和解决办法。</p>
+      <table class="tut-table tut-table-error">
+        <thead><tr><th>提示</th><th>为什么 · 怎么办</th></tr></thead>
+        <tbody>
+          <tr><td>类别不足</td><td>至少要 2 个类别，模型才能学会「区分」。再加一个类别。</td></tr>
+          <tr><td>某类样本太少</td><td>这个类别例子太少，规律学不出来。每类至少补到 2 条以上，越多越好。</td></tr>
+          <tr><td>CSV 列数不一致</td><td>有的行逗号多了或少了。检查每行列数是否一样。</td></tr>
+          <tr><td>图片打不开</td><td>格式不支持或文件损坏。换一张 PNG / JPG 图片。</td></tr>
+          <tr><td>还没训练就预测</td><td>模型还不存在。先回第 2 步完成训练，再来测试。</td></tr>
+          <tr><td>准确率很低</td><td>可能样本太少、类别太像，或标签贴错了。回第 1 步补数据、查标签，让类别更「不像」。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="tut-chapter" id="tut-ch6">
+      <h3>第 6 章 · 怎样算成功 · 如何更准</h3>
+      <p><b>一个项目做成的标志：</b></p>
+      <ul class="tut-list">
+        <li>交叉验证准确率不算太低（两类问题至少明显高于 50%）。</li>
+        <li>测试新数据时，预测正确且置信度合理。</li>
+        <li>能成功导出 zip，并在电脑上跑通包里的 <code>predict.py</code>。</li>
+      </ul>
+      <p><b>想让模型更准，按这个顺序试：</b></p>
+      <ol class="tut-list">
+        <li>加数据——每个类别多收集一些例子。</li>
+        <li>加多样性——换角度、换光线、换说法，别都是同一种样子。</li>
+        <li>查标签——确认没有把例子贴错类别。</li>
+        <li>让类别更「不像」——如果两类太接近，模型很难分清。</li>
+      </ol>
+      <p class="tut-note">记住：模型的上限由数据决定。<strong>与其反复点训练，不如回头把数据做好。</strong></p>
+    </section>
+  </div>
+</aside>

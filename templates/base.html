@@ -18,6 +18,9 @@
       </a>
       <nav class="topnav">
         <a href="/">工作台</a>
+        <button class="tutorial-trigger" id="tutorial-open" type="button" aria-haspopup="dialog">
+          <span class="tutorial-trigger-mark">✻</span>新手教程
+        </button>
       </nav>
     </header>
     <main class="page">
@@ -26,5 +29,7 @@
     <footer class="footer">
       <p>{{ school_name }} · 学生 AI 竞赛工作台 · 数据和模型都保存在本机</p>
     </footer>
+    {% include "_tutorial.html" %}
+    <script src="{{ url_for('static', path='/tutorial.js') }}?v={{ asset_version }}"></script>
   </body>
 </html>
