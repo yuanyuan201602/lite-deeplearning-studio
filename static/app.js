@@ -1135,6 +1135,7 @@ function renderPredictResult(result) {
 /* ---------- export ---------- */
 
 const exportButton = document.getElementById("export-button");
+const downloadButton = document.getElementById("download-button");
 const exportResult = document.getElementById("export-result");
 
 exportButton.addEventListener("click", async () => {
@@ -1142,19 +1143,23 @@ exportButton.addEventListener("click", async () => {
   setStatus("export-status", "正在打包……", false);
   try {
     const result = await postJson("/export", {});
+    // Enable the fixed download button in place rather than injecting a new one,
+    // so the layout stays stable. The download filename comes from the server.
+    downloadButton.href = result.download_url;
+    downloadButton.setAttribute("download", "");
+    downloadButton.classList.remove("is-disabled");
+    downloadButton.removeAttribute("aria-disabled");
+
     exportResult.innerHTML = "";
-    const link = el("a", "btn-download", "下载比赛材料包 (.zip)");
-    link.href = result.download_url;
-    exportResult.appendChild(link);
     const details = el("details", "files-details");
-    details.appendChild(el("summary", "", `包里有 ${result.files.length} 个文件`));
+    details.appendChild(el("summary", "", `包里有 ${result.files.length} 个文件（含「包内文件说明.md」）`));
     const list = el("ul", "files-list mono");
     for (const file of result.files) list.appendChild(el("li", "", file));
     details.appendChild(list);
     exportResult.appendChild(details);
     stepsDone[3] = true;
     refreshChecks();
-    setStatus("export-status", "打包完成！", false);
+    setStatus("export-status", "打包完成！点击右侧按钮下载。", false);
   } catch (error) {
     setStatus("export-status", error.message, true);
   } finally {

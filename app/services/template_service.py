@@ -23,6 +23,7 @@ class TemplateService:
         user_audio: dict[str, Path] | None = None,
     ) -> list[Path]:
         files = {
+            "包内文件说明.md": self._render_file_manifest(task, request),
             "README.md": self._render_readme(task, request),
             "train.py": self._render_train_py(task),
             "predict.py": self._render_predict_py(task),
@@ -62,6 +63,67 @@ class TemplateService:
             )
         )
         return written_files
+
+    def _render_file_manifest(self, task: TaskDefinition, request: GenerationRequest) -> str:
+        """A student-friendly guide to what each file in the package is for."""
+        model_file = f"models/{task.ai_capability}.joblib"
+        return f"""# 包内文件说明 · {request.project_name}
+
+这个材料包里的文件比较多，但**不是每个都要你动手**。下面按重要程度分组说明，
+先看「① 核心运行」就够跑通模型了；部署到硬件、参加比赛时再看后面几组。
+
+---
+
+## ① 核心运行（最重要，先看这些）
+
+| 文件 / 文件夹 | 作用 |
+| --- | --- |
+| `README.md` | 作品总说明：任务目标、怎么运行。先读它。 |
+| `predict.py` | 命令行预测脚本。在电脑上 `python predict.py` 就能用模型，**评审验证的核心**。 |
+| `run.py` | 通用运行入口，会调用训练好的模型做预测。 |
+| `{model_file}` | 训练好的模型文件，predict.py / run.py 靠它工作。**不要删**。 |
+| `models/model.meta.json` | 模型的配置信息（特征方式等），和模型文件配套。 |
+| `ai_runtime/` | 模型加载和预测的核心代码（`predict_raw()`），上面的脚本都会用到。 |
+| `requirements.txt` | 运行需要的 Python 库清单，`pip install -r requirements.txt` 一次装好。 |
+| 你的数据文件夹 / `data_sample/` | 你在第 1 步准备的数据，以及一份示例输入，方便测试。 |
+
+## ② 重新训练（想自己再练一遍时看）
+
+| 文件 | 作用 |
+| --- | --- |
+| `train.py` | 用包里的数据重新训练模型的脚本。 |
+| `notebook.ipynb` | Jupyter 笔记本版流程，适合一步步看、做教学演示。 |
+
+## ③ 行空板 / 硬件部署（要把模型放到板子上时看）
+
+| 文件 | 作用 |
+| --- | --- |
+| `run_on_unihiker.py` | 在行空板 M10 上运行的脚本，带一个可自由发挥的「创意区域」。 |
+| `setup_unihiker.sh` | 在板子上一键安装依赖。 |
+| `deploy.sh` / `deploy.bat` | 把材料包传到板子上（Mac/Linux 用 .sh，Windows 用 .bat）。 |
+| `hardware/README.md` | 硬件接线和迁移说明。 |
+| `creative_examples/` | 4 个扩展示例：显示结果、蜂鸣器、计数记录、舵机控制，给创意发挥用。 |
+
+## ④ 语音播报（任务需要说话时看）
+
+| 文件 | 作用 |
+| --- | --- |
+| `speech/speech_output.py` | 把预测结果用语音读出来。 |
+| `speech/voice_config.json` | 语音参数配置（音色、语速等）。 |
+| `speech/README.md` | 语音功能的使用说明。 |
+
+## ⑤ 比赛提交（参加竞赛时看）
+
+| 文件 | 作用 |
+| --- | --- |
+| `submission/README.md` | 提交材料的组织说明。 |
+| `docs/competition_checklist.md` | 比赛提交清单，逐项对照检查。 |
+| `docs/ai_validation.md` | 如何证明模型真的能用的验证说明。 |
+
+---
+
+**一句话**：只是练习，关注 ①；要上板子，加看 ③④；要交比赛，再看 ⑤。
+"""
 
     def _render_readme(self, task: TaskDefinition, request: GenerationRequest) -> str:
         labels = ", ".join(request.class_labels) if request.class_labels else "请在 run.py 中补充"

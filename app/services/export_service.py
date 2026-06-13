@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import csv
+import re
 import shutil
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -43,7 +45,7 @@ class ExportService:
         )
         generated_files.extend(self._bundle_trained_model(info, task, project_service, workspace))
 
-        export_path = self.create_zip(workspace)
+        export_path = self.create_zip(workspace, info.project_name)
         project_service.record_export(info, export_path)
         return export_path, generated_files
 
@@ -92,14 +94,27 @@ class ExportService:
             ocr_observed_text=ocr_payload.get("observed_sample", ""),
         )
 
-    def create_zip(self, workspace: ProjectWorkspace) -> Path:
-        export_path = workspace.exports_dir / f"{workspace.project_id}.zip"
+    def create_zip(self, workspace: ProjectWorkspace, project_name: str = "") -> Path:
+        # Name each export after the project plus a timestamp, so a student can tell
+        # batches apart and the downloaded file is recognisable (instead of an opaque
+        # project id). A new file per export keeps earlier batches around.
+        stem = self._safe_filename_stem(project_name) or workspace.project_id
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        export_path = workspace.exports_dir / f"{stem}_{timestamp}.zip"
         workspace.exports_dir.mkdir(parents=True, exist_ok=True)
         with ZipFile(export_path, "w", ZIP_DEFLATED) as archive:
             for path in sorted(workspace.generated_dir.rglob("*")):
                 if path.is_file():
                     archive.write(path, path.relative_to(workspace.generated_dir).as_posix())
         return export_path
+
+    @staticmethod
+    def _safe_filename_stem(name: str) -> str:
+        # Keep Chinese/letters/digits, drop characters illegal in file names on
+        # Windows/macOS, and collapse whitespace to underscores.
+        cleaned = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "", name)
+        cleaned = re.sub(r"\s+", "_", cleaned.strip())
+        return cleaned[:40]
 
     def _bundle_trained_model(
         self,

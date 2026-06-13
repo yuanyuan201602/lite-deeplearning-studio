@@ -753,11 +753,19 @@ h2 {
   display: inline-block;
   background: var(--text);
   color: var(--bg);
-  margin-bottom: 12px;
 }
 
 .btn-download:hover {
   background: #3a3835;
+}
+
+/* Greyed-out until an export has been produced. */
+.btn-download.is-disabled {
+  background: var(--surface-warm);
+  color: var(--muted);
+  border-color: var(--line);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* ---------- data editors ---------- */

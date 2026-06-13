@@ -30,7 +30,7 @@ DATA_PACKS_ROOT = PROJECT_ROOT / "data_packs"
 SCHOOL_NAME = "南昌市第二十三中学"
 
 # Bumping this busts browser caches for styles.css/logo.svg after an upgrade.
-ASSET_VERSION = "0.4.0"
+ASSET_VERSION = "0.5.0"
 
 EDITION_LABELS = {
     "all": "Lite DeepLearning Studio",
