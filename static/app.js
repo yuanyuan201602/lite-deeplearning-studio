@@ -262,13 +262,21 @@ function openPackModal() {
   const dialog = el("div", "modal-dialog");
 
   const header = el("div", "modal-header");
-  header.appendChild(el("h3", "", "加载样本数据包"));
+  header.appendChild(el("h3", "", "内置示例数据（小样本 · 快速体验）"));
   const closeBtn = el("button", "modal-close", "×");
   closeBtn.type = "button";
   closeBtn.addEventListener("click", () => overlay.remove());
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
   header.appendChild(closeBtn);
   dialog.appendChild(header);
+
+  dialog.appendChild(
+    el(
+      "p",
+      "pack-hint",
+      "这些是平台自带的小数据示例（几十条），用来快速体验整个流程。想用完整的教学数据，请用上方的「从整理好的数据集导入」。"
+    )
+  );
 
   const grid = el("div", "pack-grid");
   const loading = el("p", "pack-empty", "正在加载…");
@@ -322,7 +330,7 @@ function openPackModal() {
 }
 
 function packButton() {
-  const btn = el("button", "btn-ghost", "加载样本包");
+  const btn = el("button", "btn-ghost", "加载内置示例（快速体验）");
   btn.type = "button";
   btn.addEventListener("click", openPackModal);
   return btn;

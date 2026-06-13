@@ -41,7 +41,7 @@ DATASETS_ROOT = Path(os.environ.get("LDS_DATASETS_ROOT", PROJECT_ROOT / "dataset
 SCHOOL_NAME = "南昌市第二十三中学"
 
 # Bumping this busts browser caches for styles.css/logo.svg after an upgrade.
-ASSET_VERSION = "0.6.8"
+ASSET_VERSION = "0.6.9"
 
 EDITION_LABELS = {
     "all": "Lite DeepLearning Studio",
