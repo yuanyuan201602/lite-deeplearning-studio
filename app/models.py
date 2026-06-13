@@ -49,6 +49,8 @@ class TaskDefinition(BaseModel):
     suggested_hardware: list[HardwareTarget]
     required_outputs: list[str]
     starter_steps: list[str]
+    concept_intro: str = ""
+    step_guides: list[str] = Field(default_factory=list)
 
 
 class CompetitionDefinition(BaseModel):

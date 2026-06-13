@@ -26,6 +26,13 @@
     </aside>
   </section>
 
+  {% if task.concept_intro %}
+    <section class="concept-card">
+      <h2>了解原理</h2>
+      <p>{{ task.concept_intro }}</p>
+    </section>
+  {% endif %}
+
   {% if error %}
     <p class="form-error">{{ error }}</p>
   {% endif %}

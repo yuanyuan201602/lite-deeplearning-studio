@@ -607,6 +607,70 @@ h2 {
   margin: 4px 0 0;
 }
 
+.teach-block {
+  margin-top: 10px;
+  background: var(--surface-warm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+}
+
+.teach-block summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--soft);
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.teach-block summary::-webkit-details-marker {
+  display: none;
+}
+
+.teach-block summary::before {
+  content: "▸";
+  display: inline-block;
+  transition: transform 0.15s ease;
+  font-size: 11px;
+}
+
+.teach-block[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.teach-block .teach-content {
+  padding: 8px 0 6px;
+  font-size: 13px;
+  color: var(--soft);
+  line-height: 1.65;
+}
+
+.concept-card {
+  background: var(--surface-warm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.concept-card h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.concept-card p {
+  font-size: 14px;
+  color: var(--soft);
+  line-height: 1.7;
+  margin: 0;
+}
+
 .panel-actions {
   display: flex;
   align-items: center;
