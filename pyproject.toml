@@ -1,6 +1,6 @@
 [project]
 name = "lite-deeplearning-studio"
-version = "0.6.1"
+version = "0.7.0"
 description = "Lightweight competition workflow generator for student AI tasks."
 requires-python = ">=3.11"
 dependencies = [

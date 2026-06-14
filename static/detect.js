@@ -1,7 +1,7 @@
 "use strict";
 
 /* 目标检测项目页逻辑（独立于 app.js，按 ai_capability 条件加载）。
-   四步：标注画框 → 训练（算法卡片）→ 测试画框 → 导出（下一期）。 */
+   四步：标注画框 → 训练（算法卡片）→ 测试画框 → 导出材料包。 */
 
 const state = JSON.parse(document.getElementById("initial-state").textContent);
 const projectId = state.project.project_id;
@@ -49,7 +49,7 @@ const stepsDone = {
   0: (state.dataset.sample_count || 0) > 0,
   1: Boolean(state.project.train_report),
   2: false,
-  3: false,
+  3: Boolean(state.project.export_file),
 };
 
 function showStep(index) {
@@ -540,24 +540,48 @@ async function runDetect(file) {
 buildTester();
 
 /* ====================================================================== */
-/* 第 4 步：导出（下一期）                                                  */
+/* 第 4 步：导出材料包                                                       */
 /* ====================================================================== */
 
 const exportButton = document.getElementById("export-button");
 const downloadButton = document.getElementById("download-button");
 const exportResult = document.getElementById("export-result");
-if (exportButton) {
+
+if (state.project.export_file) {
+  downloadButton.href = `/exports/${projectId}/${state.project.export_file}`;
+  downloadButton.setAttribute("download", "");
+  downloadButton.classList.remove("is-disabled");
+  downloadButton.removeAttribute("aria-disabled");
+}
+
+exportButton.addEventListener("click", async () => {
   exportButton.disabled = true;
-  exportButton.textContent = "导出材料包（下一期上线）";
-}
-if (downloadButton) downloadButton.classList.add("is-disabled");
-if (exportResult) {
-  exportResult.appendChild(
-    el("p", "detect-hint",
-      "检测的材料包（能运行的检测脚本和模型）将在下一期上线。现在先把标注、训练、测试这三步玩透——" +
-      "也可以在卡片里看看「YOLO」端到端检测和这里的「轻量检测」有什么不同。")
-  );
-}
+  setStatus("export-status", "正在打包……", false);
+  try {
+    const result = await request("/export", { method: "POST" });
+    downloadButton.href = result.download_url;
+    downloadButton.setAttribute("download", "");
+    downloadButton.classList.remove("is-disabled");
+    downloadButton.removeAttribute("aria-disabled");
+
+    exportResult.innerHTML = "";
+    const details = el("details", "files-details");
+    details.appendChild(
+      el("summary", "", `包里有 ${result.files.length} 个文件（含「包内文件说明.md」）`)
+    );
+    const list = el("ul", "files-list mono");
+    for (const file of result.files) list.appendChild(el("li", "", file));
+    details.appendChild(list);
+    exportResult.appendChild(details);
+    stepsDone[3] = true;
+    refreshChecks();
+    setStatus("export-status", "打包完成！点击右侧按钮下载。", false);
+  } catch (error) {
+    setStatus("export-status", error.message, true);
+  } finally {
+    exportButton.disabled = false;
+  }
+});
 
 /* 初始：定位到第一个未完成的步骤并刷新锁 */
 refreshChecks();

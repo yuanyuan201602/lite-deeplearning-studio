@@ -40,8 +40,16 @@ class ExportService:
             if task.sample_dataset_kind == "audio"
             else None
         )
+        user_detect = (
+            (
+                project_service.detect_annotations(info.project_id),
+                project_service.dataset_dir(info.project_id) / "detect_images",
+            )
+            if task.sample_dataset_kind == "detect"
+            else None
+        )
         generated_files = self.template_service.render_task_files(
-            workspace, task, request, user_images or None, user_audio or None
+            workspace, task, request, user_images or None, user_audio or None, user_detect
         )
         generated_files.extend(self._bundle_trained_model(info, task, project_service, workspace))
 
@@ -77,6 +85,15 @@ class ExportService:
             class_labels = sorted(project_service.image_folders(project_id))
         elif task.sample_dataset_kind == "audio":
             class_labels = sorted(project_service.audio_folders(project_id))
+        elif task.sample_dataset_kind == "detect":
+            class_labels = sorted(
+                {
+                    str(box["label"]).strip()
+                    for item in project_service.detect_annotations(project_id)
+                    for box in (item.get("boxes") or [])
+                    if str(box.get("label", "")).strip()
+                }
+            )
 
         ocr_payload = project_service.load_ocr_payload(project_id)
         return GenerationRequest(
@@ -138,18 +155,38 @@ class ExportService:
         # Image packages carry the MobileNet embedder so the exported run.py/predict.py
         # extract the same transfer-learning features as the in-app training did.
         if task.ai_capability == "image_classifier":
-            embedder_path = pretrained.PRETRAINED_DIR / pretrained.IMAGE_EMBEDDER_FILE
-            if embedder_path.is_file():
-                target = target_dir / "pretrained" / pretrained.IMAGE_EMBEDDER_FILE
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(embedder_path.read_bytes())
-                copied.append(target)
+            self._bundle_pretrained(target_dir, pretrained.IMAGE_EMBEDDER_FILE, copied)
+        # Detection packages carry the SSD proposer (always, needed for the 找框 step)
+        # plus the MobileNet embedder when the box classifier used transfer features.
+        if task.ai_capability == "object_detector_trainable":
+            self._bundle_pretrained(target_dir, pretrained.DETECTOR_FILE, copied)
+            if self._detect_feature_mode(models_dir) == "mobilenet_v2":
+                self._bundle_pretrained(target_dir, pretrained.IMAGE_EMBEDDER_FILE, copied)
         meta_path = models_dir / MODEL_META_FILE
         if meta_path.is_file():
             target = target_dir / MODEL_META_FILE
             target.write_text(meta_path.read_text(encoding="utf-8"), encoding="utf-8")
             copied.append(target)
         return copied
+
+    @staticmethod
+    def _bundle_pretrained(target_dir: Path, filename: str, copied: list[Path]) -> None:
+        source = pretrained.PRETRAINED_DIR / filename
+        if source.is_file():
+            target = target_dir / "pretrained" / filename
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(source.read_bytes())
+            copied.append(target)
+
+    @staticmethod
+    def _detect_feature_mode(models_dir: Path) -> str:
+        meta_path = models_dir / MODEL_META_FILE
+        if meta_path.is_file():
+            import json
+
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            return str(meta.get("feature_mode", "pixel"))
+        return "pixel"
 
     def _csv(self, headers: list[str], rows: list[tuple[str, str]]) -> str:
         output = StringIO()

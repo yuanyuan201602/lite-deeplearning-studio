@@ -21,6 +21,7 @@ class TemplateService:
         request: GenerationRequest,
         user_images: dict[str, Path] | None = None,
         user_audio: dict[str, Path] | None = None,
+        user_detect: tuple[list[dict], Path] | None = None,
     ) -> list[Path]:
         files = {
             "包内文件说明.md": self._render_file_manifest(task, request),
@@ -59,7 +60,7 @@ class TemplateService:
             written_files.append(path)
         written_files.extend(
             self._write_sample_dataset(
-                workspace.generated_dir, task, request, user_images, user_audio
+                workspace.generated_dir, task, request, user_images, user_audio, user_detect
             )
         )
         return written_files
@@ -209,6 +210,7 @@ if __name__ == "__main__":
 
 import csv
 import json
+import random
 import wave
 from pathlib import Path
 
@@ -307,6 +309,8 @@ def train(capability: str) -> None:
             json.dumps({"rows": rows}, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
+    elif capability == "object_detector_trainable":
+        _detect_lite_train()
     else:
         raise ValueError(f"Unknown capability: {capability}")
 
@@ -374,6 +378,24 @@ def predict(capability: str) -> dict:
         return {"status": "ok", "predictions": predictions}
     if capability == "ocr_typo_checker":
         return _predict_ocr_typo()
+    if capability == "object_detector_trainable":
+        image_paths = sorted(
+            path
+            for path in (DATA_DIR / "predict_images").glob("*")
+            if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
+        )
+        predictions = []
+        for image_path in image_paths:
+            detection = _detect_lite_predict(image_path)
+            predictions.append(
+                {
+                    "image": image_path.name,
+                    "count": detection["count"],
+                    "boxes": detection["boxes"],
+                }
+            )
+        _write_json("predictions.json", predictions)
+        return {"status": "ok", "predictions": predictions}
     raise ValueError(f"Unknown capability: {capability}")
 
 
@@ -602,6 +624,179 @@ def _audio_features_from_bytes(data: bytes) -> list[float]:
         os.unlink(tmp_path)
 
 
+# ---- object detection · 轻量检测 (R-CNN simplified) ----
+# Must stay identical to app/ml/detect_lite.py + object_detector.propose_boxes so the
+# bundled in-app detector keeps working: propose (SSD) → crop → MobileNet/pixel feature
+# → classifier (+背景 class) → drop background/low score → NMS.
+
+DETECTOR_MODEL = MODELS_DIR / "pretrained" / "ssd_mobilenet.onnx"
+DETECT_BACKGROUND_LABEL = "背景"
+DETECT_PROPOSAL_SCORE = 0.10
+DETECT_MAX_PROPOSALS = 40
+DETECT_MIN_PROPOSAL = 8
+DETECT_NMS_IOU = 0.45
+DETECT_MIN_SCORE = 0.55
+_DETECTOR_SESSION = None
+
+
+def _detector_session():
+    global _DETECTOR_SESSION
+    if _DETECTOR_SESSION is None and DETECTOR_MODEL.is_file():
+        import onnxruntime
+
+        _DETECTOR_SESSION = onnxruntime.InferenceSession(
+            str(DETECTOR_MODEL), providers=["CPUExecutionProvider"]
+        )
+    return _DETECTOR_SESSION
+
+
+def _detect_features(image, feature_mode: str = "pixel") -> list[float]:
+    """One crop → feature vector; identical to the studio's image feature pipeline."""
+    if feature_mode == "mobilenet_v2":
+        session = _embedder_session()
+        if session is None:
+            raise RuntimeError(
+                "模型使用 MobileNet 特征训练，需要 models/pretrained/mobilenetv2.onnx 和 onnxruntime。"
+            )
+        resized = image.convert("RGB").resize(EMBED_INPUT_SIZE)
+        pixels = np.asarray(resized, dtype=np.float32) / 255.0
+        normalized = (pixels - IMAGENET_MEAN) / IMAGENET_STD
+        batch = normalized.transpose(2, 0, 1)[np.newaxis, :]
+        output = session.run(None, {session.get_inputs()[0].name: batch})[0]
+        return output[0].astype(np.float64).tolist()
+    arr = np.asarray(image.convert("RGB").resize((32, 32)), dtype=np.float64) / 255.0
+    return arr.flatten().tolist()
+
+
+def _propose_boxes(image) -> list[dict]:
+    """Class-agnostic candidate boxes from the pretrained SSD (the 找框 step)."""
+    session = _detector_session()
+    if session is None:
+        raise RuntimeError(
+            "轻量检测需要候选框模型 models/pretrained/ssd_mobilenet.onnx 和 onnxruntime。"
+        )
+    width, height = image.size
+    batch = np.asarray(image.convert("RGB"), dtype=np.uint8)[np.newaxis, :]
+    outputs = session.run(None, {session.get_inputs()[0].name: batch})
+    named = {output.name: value for output, value in zip(session.get_outputs(), outputs)}
+    boxes = named["detection_boxes:0"][0]
+    scores = named["detection_scores:0"][0]
+    proposals: list[dict] = []
+    for box, score in zip(boxes, scores):
+        if score < DETECT_PROPOSAL_SCORE or len(proposals) >= DETECT_MAX_PROPOSALS:
+            continue
+        ymin, xmin, ymax, xmax = box
+        x, y = int(xmin * width), int(ymin * height)
+        w, h = int((xmax - xmin) * width), int((ymax - ymin) * height)
+        if w < DETECT_MIN_PROPOSAL or h < DETECT_MIN_PROPOSAL:
+            continue
+        proposals.append({"x": x, "y": y, "w": w, "h": h})
+    return proposals
+
+
+def _detect_iou(a, b) -> float:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    ix1, iy1 = max(ax, bx), max(ay, by)
+    ix2, iy2 = min(ax + aw, bx + bw), min(ay + ah, by + bh)
+    iw, ih = max(0, ix2 - ix1), max(0, iy2 - iy1)
+    inter = iw * ih
+    union = aw * ah + bw * bh - inter
+    return inter / union if union > 0 else 0.0
+
+
+def _detect_nms(boxes: list[dict], iou_threshold: float) -> list[dict]:
+    kept: list[dict] = []
+    for box in sorted(boxes, key=lambda b: b["score"], reverse=True):
+        rect = (box["x"], box["y"], box["w"], box["h"])
+        if all(_detect_iou(rect, (k["x"], k["y"], k["w"], k["h"])) < iou_threshold for k in kept):
+            kept.append(box)
+    return kept
+
+
+def _detect_random_negatives(width, height, positives, count, rng) -> list[tuple]:
+    negatives: list[tuple] = []
+    attempts = 0
+    while len(negatives) < count and attempts < count * 20:
+        attempts += 1
+        w = rng.randint(max(8, width // 6), max(9, width // 2))
+        h = rng.randint(max(8, height // 6), max(9, height // 2))
+        x = rng.randint(0, max(0, width - w))
+        y = rng.randint(0, max(0, height - h))
+        candidate = (x, y, w, h)
+        if all(_detect_iou(candidate, pos) < 0.2 for pos in positives):
+            negatives.append(candidate)
+    return negatives
+
+
+def _detect_lite_train() -> None:
+    items = json.loads((DATA_DIR / "detect_labels.json").read_text(encoding="utf-8"))
+    images_dir = DATA_DIR / "detect_images"
+    feature_mode = _active_image_feature_mode()
+    rng = random.Random(7)
+    features: list[list[float]] = []
+    labels: list[str] = []
+    object_labels: set = set()
+    for item in items:
+        boxes = item.get("boxes") or []
+        if not boxes:
+            continue
+        image_path = images_dir / item.get("image", "")
+        if not image_path.is_file():
+            continue
+        image = Image.open(image_path).convert("RGB")
+        width, height = image.size
+        positives: list[tuple] = []
+        for box in boxes:
+            rect = (int(box["x"]), int(box["y"]), int(box["w"]), int(box["h"]))
+            if rect[2] < 4 or rect[3] < 4:
+                continue
+            label = str(box["label"]).strip()
+            if not label:
+                continue
+            crop = image.crop((rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3]))
+            features.append(_detect_features(crop, feature_mode))
+            labels.append(label)
+            positives.append(rect)
+            object_labels.add(label)
+        for neg in _detect_random_negatives(width, height, positives, len(positives), rng):
+            crop = image.crop((neg[0], neg[1], neg[0] + neg[2], neg[1] + neg[3]))
+            features.append(_detect_features(crop, feature_mode))
+            labels.append(DETECT_BACKGROUND_LABEL)
+    model = LogisticRegression(max_iter=1000)
+    model.fit(features, labels)
+    joblib.dump(
+        {"model": model, "feature_mode": feature_mode, "classes": sorted(object_labels)},
+        MODELS_DIR / "object_detector_trainable.joblib",
+    )
+
+
+def _detect_lite_predict(data) -> dict:
+    store = joblib.load(MODELS_DIR / "object_detector_trainable.joblib")
+    model = store["model"]
+    feature_mode = store.get("feature_mode", "pixel")
+    classes = list(model.classes_)
+    if isinstance(data, (bytes, bytearray)):
+        from io import BytesIO
+
+        image = Image.open(BytesIO(bytes(data))).convert("RGB")
+    else:
+        image = Image.open(Path(data)).convert("RGB")
+    width, height = image.size
+    results: list[dict] = []
+    for prop in _propose_boxes(image):
+        crop = image.crop((prop["x"], prop["y"], prop["x"] + prop["w"], prop["y"] + prop["h"]))
+        probabilities = model.predict_proba([_detect_features(crop, feature_mode)])[0]
+        best = int(probabilities.argmax())
+        label = str(classes[best])
+        score = float(probabilities[best])
+        if label == DETECT_BACKGROUND_LABEL or score < DETECT_MIN_SCORE:
+            continue
+        results.append({**prop, "label": label, "score": round(score, 3)})
+    results = _detect_nms(results, DETECT_NMS_IOU)
+    return {"boxes": results, "count": len(results), "width": width, "height": height}
+
+
 def predict_raw(capability: str, data) -> dict:
     """Predict directly from raw data — used by run_on_unihiker.py.
 
@@ -610,6 +805,7 @@ def predict_raw(capability: str, data) -> dict:
       image_classifier               : bytes (JPEG/PNG) or Path
       audio_classifier               : bytes (WAV) or Path
       sensor_decision_model          : dict[str, float | str]
+      object_detector_trainable      : bytes (JPEG/PNG) or Path → {boxes, count, ...}
     """
     OUTPUTS_DIR.mkdir(exist_ok=True)
     if capability == "text_classifier":
@@ -658,6 +854,8 @@ def predict_raw(capability: str, data) -> dict:
         features = [[float(data[name]) for name in feature_names]]
         label = str(model.predict(features)[0])
         return {"label": label, "feature_names": feature_names}
+    if capability == "object_detector_trainable":
+        return _detect_lite_predict(data)
     raise ValueError(f"Unknown capability: {capability}")
 '''
 
@@ -1116,6 +1314,8 @@ python run.py
             return self._unihiker_sensor_decision()
         if cap == "qa_retrieval":
             return self._unihiker_qa_retrieval()
+        if cap == "object_detector_trainable":
+            return self._unihiker_object_detector()
         # Fallback for ocr or unknown capabilities
         return self._unihiker_generic(cap)
 
@@ -1535,6 +1735,107 @@ if __name__ == "__main__":
     main()
 '''
 
+    def _unihiker_object_detector(self) -> str:
+        return '''\
+"""行空板运行脚本 — 目标检测（轻量检测）
+
+摄像头拍一张照片，模型在画面里把目标框出来，屏幕显示框的数量和类别。
+（轻量检测 = 先借预训练网络找候选框，再认每个框是什么，纯 CPU 可跑。）
+
+运行方式：
+  python run_on_unihiker.py
+"""
+from __future__ import annotations
+
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ai_runtime.core import predict_raw
+
+# ── 行空板硬件初始化 ───────────────────────────────────────────
+try:
+    from unihiker import GUI               # 行空板官方库，出厂固件已内置
+    from pinpong.board import Board        # pinpong 硬件控制库，同样已内置
+    from pinpong.extension.unihiker import button_a
+    Board().begin()
+    gui = GUI()
+    _ON_BOARD = True
+except Exception:
+    _ON_BOARD = False
+    print("未检测到行空板环境，使用终端模式（按 Enter 触发）。")
+
+try:
+    import cv2
+    _HAS_CV2 = True
+except ImportError:
+    _HAS_CV2 = False
+    print("未找到 opencv-python，请先运行 setup_unihiker.sh 安装依赖。")
+
+
+def _show(text: str) -> None:
+    if _ON_BOARD:
+        gui.clear()
+        gui.draw_text(text=text, x=120, y=160, font_size=16, color="#1f1e1d", origin="center")
+    else:
+        print(text)
+
+
+# ================================================================
+#  创意区域 — 只需修改这个函数
+#  boxes : 检测到的框列表，每个 {x, y, w, h, label, score}
+#  frame : 当前帧（numpy array，可用 cv2 在上面画框）
+# ================================================================
+def on_result(boxes: list, frame) -> None:
+    if not boxes:
+        _show("没找到目标")
+        return
+    summary = "、".join(f"{b['label']}({b['score']:.0%})" for b in boxes[:4])
+    _show(f"找到 {len(boxes)} 个：\\n{summary}")
+
+
+# ── 主循环（无需修改）────────────────────────────────────────────
+def main() -> None:
+    if not _HAS_CV2:
+        return
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        _show("找不到摄像头，请检查 USB 连接")
+        return
+
+    _show("按 A 键拍照检测")
+    prev_pressed = False
+
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                time.sleep(0.1)
+                continue
+
+            if _ON_BOARD:
+                pressed = button_a.is_pressed()
+                triggered = pressed and not prev_pressed
+                prev_pressed = pressed
+            else:
+                triggered = len(input("按 Enter 拍照（q 退出）: ")) == 0
+
+            if triggered:
+                _show("检测中...")
+                _, img_bytes = cv2.imencode(".jpg", frame)
+                result = predict_raw("object_detector_trainable", img_bytes.tobytes())
+                on_result(result.get("boxes", []), frame)
+
+            time.sleep(0.05)
+    finally:
+        cap.release()
+
+
+if __name__ == "__main__":
+    main()
+'''
+
     def _unihiker_generic(self, capability: str) -> str:
         return f'''\
 """行空板运行脚本 — {capability}
@@ -1746,6 +2047,7 @@ def on_result(label: str, confidence: float, **kwargs) -> None:
         request: GenerationRequest,
         user_images: dict[str, Path] | None = None,
         user_audio: dict[str, Path] | None = None,
+        user_detect: tuple[list[dict], Path] | None = None,
     ) -> list[Path]:
         source_files: list[str]
         if task.sample_dataset_kind == "text":
@@ -1757,6 +2059,13 @@ def on_result(label: str, confidence: float, **kwargs) -> None:
         elif task.sample_dataset_kind == "audio":
             paths = self._write_audio_dataset(generated_dir, request, user_audio)
             source_files = ["data_sample/audio/", "data_sample/predict_audio/"]
+        elif task.sample_dataset_kind == "detect":
+            paths = self._write_detect_dataset(generated_dir, user_detect)
+            source_files = [
+                "data_sample/detect_images/",
+                "data_sample/detect_labels.json",
+                "data_sample/predict_images/",
+            ]
         elif task.sample_dataset_kind == "qa":
             paths = self._write_qa_dataset(generated_dir, request)
             source_files = ["data_sample/qa_pairs.csv"]
@@ -1945,6 +2254,93 @@ def on_result(label: str, confidence: float, **kwargs) -> None:
                 paths.append(predict_target)
         return paths
 
+    def _write_detect_dataset(
+        self,
+        generated_dir: Path,
+        user_detect: tuple[list[dict], Path] | None = None,
+    ) -> list[Path]:
+        """Bundle the box-annotation dataset (detect_images/ + detect_labels.json) plus
+        one predict image, so the exported train.py / run.py can retrain and detect.
+        Falls back to a tiny synthetic set when the project has no annotations yet."""
+        paths: list[Path] = []
+        images_target = generated_dir / "data_sample" / "detect_images"
+        images_target.mkdir(parents=True, exist_ok=True)
+
+        bundled = user_detect[0] if user_detect else []
+        images_dir = user_detect[1] if user_detect else None
+        annotations: list[dict] = []
+        first_image_name: str | None = None
+        for item in bundled:
+            name = Path(str(item.get("image", "")).strip()).name
+            boxes = item.get("boxes") or []
+            if not name or not boxes or images_dir is None:
+                continue
+            source = images_dir / name
+            if not source.is_file():
+                continue
+            (images_target / name).write_bytes(source.read_bytes())
+            paths.append(images_target / name)
+            annotations.append(
+                {
+                    "image": name,
+                    "boxes": [
+                        {
+                            "x": int(box["x"]), "y": int(box["y"]),
+                            "w": int(box["w"]), "h": int(box["h"]),
+                            "label": str(box["label"]),
+                        }
+                        for box in boxes
+                    ],
+                    "width": int(item.get("width", 0)),
+                    "height": int(item.get("height", 0)),
+                }
+            )
+            if first_image_name is None:
+                first_image_name = name
+
+        if not annotations:
+            annotations = self._write_synthetic_detect_images(images_target, paths)
+            first_image_name = annotations[0]["image"] if annotations else None
+
+        labels_path = generated_dir / "data_sample" / "detect_labels.json"
+        labels_path.write_text(
+            json.dumps(annotations, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        paths.append(labels_path)
+
+        # One predict image so predict.py / run.py have something to detect on.
+        if first_image_name is not None:
+            predict_dir = generated_dir / "data_sample" / "predict_images"
+            predict_dir.mkdir(parents=True, exist_ok=True)
+            predict_path = predict_dir / first_image_name
+            predict_path.write_bytes((images_target / first_image_name).read_bytes())
+            paths.append(predict_path)
+        return paths
+
+    def _write_synthetic_detect_images(
+        self, images_target: Path, paths: list[Path]
+    ) -> list[dict]:
+        """A minimal annotated set (one colored block per image) so a fresh detection
+        project still exports a runnable train.py."""
+        annotations: list[dict] = []
+        specs = [("方块A", (220, 60, 60), (16, 16, 40, 40)), ("方块B", (60, 120, 220), (96, 60, 44, 40))]
+        for index, (label, color, rect) in enumerate(specs):
+            image = Image.new("RGB", (160, 120), (235, 235, 235))
+            x, y, w, h = rect
+            ImageDraw.Draw(image).rectangle([x, y, x + w, y + h], fill=color)
+            name = f"sample_{index}.png"
+            image.save(images_target / name)
+            paths.append(images_target / name)
+            annotations.append(
+                {
+                    "image": name,
+                    "boxes": [{"x": x, "y": y, "w": w, "h": h, "label": label}],
+                    "width": 160,
+                    "height": 120,
+                }
+            )
+        return annotations
+
     def _write_audio_dataset(
         self,
         generated_dir: Path,
@@ -2055,6 +2451,8 @@ def on_result(label: str, confidence: float, **kwargs) -> None:
             "ocr": f"{request.ocr_correct_text}{request.ocr_observed_text}",
             "image": "yes" if user_images else "",
             "audio": "yes" if user_audio else "",
+            # Detection: annotated boxes show up as class labels on the request.
+            "detect": "yes" if request.class_labels else "",
         }
         return "user" if user_data_by_kind[task.sample_dataset_kind].strip() else "sample"
 

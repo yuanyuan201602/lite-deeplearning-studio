@@ -6,16 +6,16 @@ This file is the authoritative guide for Claude Code working in this repository.
 
 ## 0. Current Status & Next Steps (read this first)
 
-> **当前版本 v0.6.1（2026-06-14，已打 tag + GitHub Release）。** `python -m pytest -q` → 120 passed，ruff clean。
+> **当前版本 v0.7.0（2026-06-14）。** `python -m pytest -q` → 122 passed，ruff clean。
 
-**已完成**：6 个可训练 ML 能力（文本/图像/语音分类、问答检索、传感器决策、OCR 查错）+ 整理数据集导入 + 算法卡片全集 + 完整教育模块（深度学习地图页、混淆矩阵、训练「和上次相比」、词权重、交互演示、Python 代码片段）+ **目标检测一期**（画框标注工具 + 轻量检测 / R-CNN 简化版）。
+**已完成**：6 个可训练 ML 能力（文本/图像/语音分类、问答检索、传感器决策、OCR 查错）+ 整理数据集导入 + 算法卡片全集 + 完整教育模块（深度学习地图页、混淆矩阵、训练「和上次相比」、词权重、交互演示、Python 代码片段）+ **目标检测一期**（画框标注工具 + 轻量检测 / R-CNN 简化版）+ **目标检测二期·导出包**（算法 A 的可运行检测材料包：导出 `run.py/predict.py/core.py` 完整复现 提框→裁剪→认框→NMS，bundle SSD+MobileNet onnx + 标注数据，前端第 4 步已是真导出，浏览器+子进程双验证）。
 
 **活跃前沿 / 下一步（按优先级）**：
-1. **目标检测二期** — 算法 B「YOLO 端到端」（YOLOv8n 微调，隔离在 `.[detect]` 可选依赖 + 分钟级训练的进度 UX）；两个算法都接**检测导出包**（目前检测第 4 步是占位「下一期上线」）。
+1. **目标检测二期·算法 B（YOLO，剩余项）** — 「YOLO 端到端」（YOLOv8n 微调，隔离在 `.[detect]` 可选依赖 + 分钟级训练的进度 UX）；做好后接同一套检测导出包（导出端再加 YOLO 推理分支）。导出骨架已就绪、算法 A 已接通，所以这步只剩 YOLO 训练/推理本身 + 训练 UX。
 2. **目标检测三期** — COCO 导入器（解锁外部 6 个检测数据集）+ 标注工具打磨（移动/缩放/快捷键）。
 3. 其余：人肉测试修 bug、数据集继续扩充、`static/logo.svg` 等正式校徽替换。
 
-**三份 PRD（都在 `docs/`）**：`PRD_OBJECT_DETECTION.md`（一期已实现，二/三期待做）、`PRD_EDUCATION.md`（除视频外已全部实现）、`PRD_LIGHTWEIGHT_WORKFLOW.md`（最初的产品方案）。
+**三份 PRD（都在 `docs/`）**：`PRD_OBJECT_DETECTION.md`（一期 + 二期导出包已实现，二期 YOLO / 三期待做）、`PRD_EDUCATION.md`（除视频外已全部实现）、`PRD_LIGHTWEIGHT_WORKFLOW.md`（最初的产品方案）。
 
 **产品方向决策**：通用教育与竞赛**分开做**——先把通用教育/能力做透，竞赛日后作为「通用能力的竞赛向整合」放到独立页面。首页竞赛专区已隐藏（`/competition/*` 路由仍在）。
 
@@ -95,6 +95,16 @@ All GENERAL_TASKS have `concept_intro` + `step_guides[4]` plus the v0.4.0 educat
 
 ## 4. Feature Status
 
+### Done (v0.7.0, 2026-06-14) — object detection (phase 2 · export package, algorithm A)
+
+- **Runnable detection export package** for the lite detector. The student's step-4 export now produces a real zip whose `predict.py` / `run.py` reproduce the in-app detection pipeline byte-for-byte: propose (SSD) → crop → MobileNet/pixel feature → LogisticRegression (+背景) → drop background/low-score → NMS. Mirrors `app/ml/detect_lite.py` + `object_detector.propose_boxes` in `template_service.py`'s `core.py` (new helpers `_detector_session / _propose_boxes / _detect_features / _detect_iou / _detect_nms / _detect_random_negatives / _detect_lite_train / _detect_lite_predict`, plus `train()/predict()/predict_raw()` branches).
+- **Bundling** (`export_service._bundle_trained_model`): detection packages carry `models/pretrained/ssd_mobilenet.onnx` (always, for 找框) + `models/pretrained/mobilenetv2.onnx` (when the box classifier used `feature_mode="mobilenet_v2"`, read from `model_meta.json`) + `models/object_detector_trainable.joblib`. New helpers `_bundle_pretrained` / `_detect_feature_mode`.
+- **Dataset bundling** (`template_service._write_detect_dataset` + `_write_synthetic_detect_images`): copies `data_sample/detect_images/` + `detect_labels.json` + one `predict_images/` image so the exported `train.py` can retrain and `predict.py` can detect; falls back to a tiny synthetic annotated set when the project has no boxes yet (so a fresh export still runs). `render_task_files` / `_write_sample_dataset` thread a `user_detect=(annotations, images_dir)` arg; `export_service` builds it; `build_generation_request` adds detection `class_labels` (union of box labels); `_data_origin` gained a `detect` key.
+- **行空板 deploy** (`_unihiker_object_detector`): camera-capture → `predict_raw("object_detector_trainable", jpg_bytes)` → `on_result(boxes, frame)` drawing/showing box count + labels (mirrors the image-classifier camera script).
+- **Frontend** (`static/detect.js`): step-4 placeholder replaced with the real export/download UX (verbatim port of app.js's handler — `POST /export`, activate `#download-button`, file list, `stepsDone[3]`). `stepsDone[3]` now reads `state.project.export_file`.
+- Tests: `test_export_detection_project_bundles_models_and_predicts` (exports + runs `predict.py` subprocess, asserts bundled onnx/joblib + boxes) and `test_detection_template_retrains_and_runs_on_sample_data` (synthetic-fallback `run.py` retrains+predicts). Both skip when `pretrained.has_detector()` is False; the catalog "run all" test skips detection without SSD (detection predict has no pixel fallback for 找框).
+- **Still phase 2 (pending)**: algorithm B (YOLO) training/inference + `.[detect]` extra + minute-level training UX, then a YOLO branch in the export `run.py`. The export scaffolding is now in place for it.
+
 ### Done (v0.6.0, 2026-06-13) — object detection (phase 1)
 
 - **Trainable detection task** (`ai_capability="object_detector_trainable"`, `sample_dataset_kind="detect"`): a 4-step detection flow with its own front-end (`static/detect.js`, loaded instead of app.js by capability in project.html).
@@ -160,8 +170,8 @@ Declared in `TaskDefinition.paused_features` — rendered as code stubs in the e
 - `static/logo.svg` is a placeholder — replace with the real school badge when available.
 - Mobile layout untested; designed for teacher-projected or student laptop use.
 - Photo OCR (`.[ocr]` extra, EasyOCR) only runs in the exported `run.py`; in-browser step 2 uses a text-diff checker, not real OCR.
-- **Detection export not done yet** (phase 2): the detection task's step-4 panel is a "下一期上线" placeholder; no detection material zip yet.
-- See Section 0 for the active roadmap (detection phase 2/3).
+- **Detection algorithm B (YOLO) not built yet** (phase 2 remaining): the YOLO algorithm card is locked ("下一期"); `engine` rejects `model_choice="yolo"`. The detection **export package is done for algorithm A** (v0.7.0) — when YOLO lands it just needs a `detect_yolo.py` + a YOLO branch in the export `run.py`.
+- See Section 0 for the active roadmap (detection phase 2 YOLO / phase 3).
 
 ---
 
@@ -169,7 +179,7 @@ Declared in `TaskDefinition.paused_features` — rendered as code stubs in the e
 
 ```
 app/main.py               App factory (create_app).
-                          ASSET_VERSION = "0.11.0" — bump when changing CSS/JS to bust browser caches.
+                          ASSET_VERSION = "0.12.0" — bump when changing CSS/JS to bust browser caches.
                           HTML route /learn/deep-learning → learn_deep_learning.html (DL explainer, v0.4.0).
                           DATASETS_ROOT = LDS_DATASETS_ROOT env (default datasets/); mounts the datasets
                           router only when the path exists, else dataset import stays disabled.
@@ -232,9 +242,18 @@ app/services/
                           run_on_unihiker.py (per-capability with on_result() "创意区域" hook),
                           setup_unihiker.sh, deploy.sh/.bat, creative_examples/ snippets,
                           speech/ layer, docs/, 包内文件说明.md.
+                          Detection (v0.7.0): core.py grows train/predict/predict_raw detection
+                          branches + propose/crop/feature/NMS helpers (mirror detect_lite.py);
+                          _write_detect_dataset bundles detect_images/+detect_labels.json (synthetic
+                          fallback when no boxes); _unihiker_object_detector camera-detect script.
+                          render_task_files / _write_sample_dataset take user_detect=(annotations,
+                          images_dir).
   export_service.py       export_project(): render templates → copy trained model → create zip.
                           _safe_filename_stem(): strips Windows-illegal chars, collapses spaces to _.
                           Zip named <safe_name>_<YYYYMMDD-HHMMSS>.zip. Old zips are kept.
+                          Detection (v0.7.0): bundles ssd_mobilenet.onnx (always) + mobilenetv2.onnx
+                          (when feature_mode=mobilenet) via _bundle_pretrained/_detect_feature_mode;
+                          build_generation_request fills detection class_labels from annotations.
 templates/
   base.html               Shared layout: topnav (school name + tutorial trigger button), page container.
                           Includes _tutorial.html and loads tutorial.js for every page.
@@ -338,7 +357,7 @@ logs/                     Reserved
 | POST | `data/detect` | `{items:[{image, boxes, width, height}]}` — save annotations |
 | GET | `detect/image/{name}` | Serve a stored annotation image |
 | POST | `predict/detect` | Multipart image → `{boxes:[{x,y,w,h,label,score}], count, width, height}` |
-| POST | `export` | Build zip; **400 if train_report is None** (detection export = phase 2) |
+| POST | `export` | Build zip; **400 if train_report is None**. Detection now exports a runnable package (algorithm A, v0.7.0). |
 
 ### Other routes
 
@@ -388,7 +407,7 @@ The exported `ai_runtime/core.py` must load and run the model trained in-app. **
 | `sensor_decision_model` | `{model, feature_names}` | CSV header-driven; last column = action label. |
 | `text_classifier` | `{model}` | TF-IDF + sklearn pipeline. |
 | `ocr_typo_checker` | none | In-browser: text diff. Export: EasyOCR in `run.py` (needs `.[ocr]`). |
-| `object_detector_trainable` | `{model, feature_mode, classes}` | lite (R-CNN simplified, v0.6.0): SSD `propose_boxes` → crop → MobileNet/pixel feature → LogisticRegression (+背景 class) → NMS. **No export template yet (phase 2)**; must mirror crop+feature+propose+NMS when added. |
+| `object_detector_trainable` | `{model, feature_mode, classes}` | lite (R-CNN simplified, v0.6.0): SSD `propose_boxes` → crop → MobileNet/pixel feature → LogisticRegression (+背景 class) → NMS. **Export template done (v0.7.0)** — `core.py` mirrors propose+crop+feature+NMS; package bundles `joblib + ssd_mobilenet.onnx (+ mobilenetv2.onnx for mobilenet mode)`. Any change to `detect_lite.py` / `propose_boxes` must be made identically in `template_service.py`'s detection helpers. |
 
 On export, `model.joblib` → `models/<capability>.joblib` in package. Image packages also bundle `models/pretrained/mobilenet_v2.onnx`.
 
@@ -461,6 +480,14 @@ docker compose up -d --build
 ---
 
 ## 13. Version History
+
+### v0.7.0 (2026-06-14)
+
+- Object detection phase 2 · export package (algorithm A / lite): the detection step-4 now produces a runnable material zip. Exported `predict.py` / `run.py` / `core.py` reproduce the in-app pipeline byte-for-byte (propose→crop→MobileNet/pixel feature→LogisticRegression(+背景)→drop background/low-score→NMS), mirroring `detect_lite.py` + `object_detector.propose_boxes`
+- Bundling: `ssd_mobilenet.onnx` (always) + `mobilenetv2.onnx` (mobilenet feature mode) + box-classifier joblib + annotated dataset; synthetic-fallback boxes when a project has no annotations so a fresh export still runs
+- Detection `run_on_unihiker.py` (camera-detect → draw boxes); frontend step-4 placeholder replaced with the real export/download UX in `detect.js`; `ASSET_VERSION` → 0.12.0
+- Tests: detection export subprocess tests (predict + synthetic-retrain run.py), skipped when SSD pretrained model is absent; verified end-to-end in the browser (real export button → 35-file package)
+- Remaining for phase 2: algorithm B (YOLO) + `.[detect]` extra + training UX, then a YOLO branch in the export `run.py`
 
 ### v0.6.1 (2026-06-14)
 

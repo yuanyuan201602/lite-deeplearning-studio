@@ -272,6 +272,105 @@ def test_audio_template_trains_and_runs_on_sample_data(tmp_path: Path) -> None:
     assert (generated_dir / "outputs" / "predictions.json").exists()
 
 
+def _annotate_detection_project(service: ProjectService, info: ProjectInfo) -> None:
+    """Two 64x64 images, two boxes each (red/blue blocks) → 4 boxes, 2 classes."""
+    specs = [((210, 70, 70), "红块"), ((70, 90, 210), "蓝块")]
+    items = []
+    for index, (color, _label) in enumerate(specs):
+        stored = service.add_detect_image(
+            info, f"img{index}.png", make_image_bytes(color)
+        )
+        items.append(
+            {
+                "image": stored["image"],
+                "width": stored["width"],
+                "height": stored["height"],
+                "boxes": [
+                    {"x": 4, "y": 4, "w": 16, "h": 16, "label": specs[0][1]},
+                    {"x": 26, "y": 26, "w": 14, "h": 14, "label": specs[1][1]},
+                ],
+            }
+        )
+    service.save_detect_annotations(info, items)
+
+
+def test_export_detection_project_bundles_models_and_predicts(tmp_path: Path) -> None:
+    from app.ml import pretrained
+
+    if not pretrained.has_detector():
+        import pytest
+
+        pytest.skip("pretrained SSD detector not downloaded")
+
+    service, info = make_project(
+        tmp_path, "general_ml", "general_object_detector", "检测导出"
+    )
+    _annotate_detection_project(service, info)
+    service.train(info, "object_detector_trainable")
+    assert info.train_report["algorithm"] == "lite"
+    task = get_task("general_ml", "general_object_detector")
+    assert task is not None
+
+    export_path, _ = ExportService().export_project(info, task, service)
+
+    with ZipFile(export_path) as archive:
+        names = set(archive.namelist())
+    assert "models/object_detector_trainable.joblib" in names
+    assert "models/pretrained/ssd_mobilenet.onnx" in names
+    # mobilenet feature mode → the embedder must travel with the box classifier.
+    if info.train_report["feature_mode"] == "mobilenet_v2":
+        assert "models/pretrained/mobilenetv2.onnx" in names
+    detect_images = [n for n in names if n.startswith("data_sample/detect_images/")]
+    assert len(detect_images) == 2
+    assert "data_sample/detect_labels.json" in names
+
+    # The exported predict.py must reproduce propose→crop→classify→NMS (key invariant).
+    generated_dir = service.workspace(info).generated_dir
+    result = subprocess.run(
+        [sys.executable, "predict.py"],
+        cwd=generated_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    predictions = json.loads(
+        (generated_dir / "outputs" / "predictions.json").read_text(encoding="utf-8")
+    )
+    assert isinstance(predictions, list) and predictions
+    for entry in predictions:
+        assert "boxes" in entry and "count" in entry
+
+
+def test_detection_template_retrains_and_runs_on_sample_data(tmp_path: Path) -> None:
+    from app.ml import pretrained
+
+    if not pretrained.has_detector():
+        import pytest
+
+        pytest.skip("pretrained SSD detector not downloaded")
+
+    service, info = make_project(
+        tmp_path, "general_ml", "general_object_detector", "检测样例"
+    )
+    task = get_task("general_ml", "general_object_detector")
+    assert task is not None
+    # No annotations: export must fall back to synthetic boxes so run.py still trains.
+    ExportService().export_project(info, task, service)
+    generated_dir = service.workspace(info).generated_dir
+
+    result = subprocess.run(
+        [sys.executable, "run.py"],
+        cwd=generated_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert (generated_dir / "outputs" / "predictions.json").exists()
+
+
 def test_every_catalog_task_exports_required_outputs_without_training(tmp_path: Path) -> None:
     for competition in list_competitions():
         for task in competition.tasks:
@@ -287,9 +386,14 @@ def test_every_catalog_task_exports_required_outputs_without_training(tmp_path: 
 
 
 def test_generated_non_ocr_tasks_run_locally_on_sample_data(tmp_path: Path) -> None:
+    from app.ml import pretrained
+
     for competition in list_competitions():
         for task in competition.tasks:
             if task.ai_capability == "ocr_typo_checker":
+                continue
+            # Detection's run.py needs the SSD proposer (no pixel fallback for 找框).
+            if task.ai_capability == "object_detector_trainable" and not pretrained.has_detector():
                 continue
             service, info = make_project(
                 tmp_path, competition.slug, task.slug, f"运行-{task.slug}"
