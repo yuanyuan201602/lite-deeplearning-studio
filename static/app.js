@@ -1164,6 +1164,8 @@ function renderTrainReport(report) {
     facts.appendChild(reportFact("使用模型", report.model_name));
   }
   card.appendChild(facts);
+  const deltaBox = renderTrainDelta((state.project && state.project.train_history) || []);
+  if (deltaBox) card.appendChild(deltaBox);
   if (report.cross_val_accuracy) {
     const note = el("p", "report-classes");
     note.textContent =
@@ -1198,6 +1200,7 @@ function renderTrainReport(report) {
   }
   const confusionBox = renderConfusion(report.confusion);
   if (confusionBox) card.appendChild(confusionBox);
+  if (report.top_features) card.appendChild(renderTopFeatures(report.top_features));
   if (report.rules_text) {
     const details = el("details", "rules-details");
     details.appendChild(el("summary", "", "看看模型学到的决策规则"));
@@ -1273,6 +1276,88 @@ function renderConfusion(confusion) {
       : "每一行是一个真实类别，每一列是模型给出的判断；看这一行被判成了哪些类。绿色对角线是判对的，橙色是被搞混的。" +
         "数据较少，这里看的是训练集上的表现，仅供参考。";
   wrap.appendChild(note);
+  return wrap;
+}
+
+function renderTrainDelta(history) {
+  if (!history || history.length < 2) return null;
+  const prev = history[history.length - 2];
+  const now = history[history.length - 1];
+  const useCv = prev.cross_val_accuracy != null && now.cross_val_accuracy != null;
+  const key = useCv ? "cross_val_accuracy" : "train_accuracy";
+  const name = useCv ? "交叉验证准确率" : "训练准确率";
+  const before = prev[key];
+  const after = now[key];
+  if (before == null || after == null) return null;
+
+  const box = el("div", "delta-box");
+  box.appendChild(el("p", "field-label", `和上次相比（${name}）`));
+
+  const changes = [];
+  if (now.sample_count !== prev.sample_count) {
+    const dir = now.sample_count > prev.sample_count ? "增加到" : "减少到";
+    changes.push(`数据${dir} ${now.sample_count} 条`);
+  }
+  if (now.model_name && now.model_name !== prev.model_name) {
+    changes.push(`模型换成「${now.model_name}」`);
+  }
+  if (now.feature_mode && now.feature_mode !== prev.feature_mode) {
+    const fm = now.feature_mode === "mobilenet_v2" ? "MobileNet 迁移学习" : "像素";
+    changes.push(`特征换成「${fm}」`);
+  }
+  if (changes.length) box.appendChild(el("p", "delta-change", `这次：${changes.join("、")}。`));
+
+  box.appendChild(deltaBar("上次", before, false));
+  box.appendChild(deltaBar("这次", after, true));
+
+  const diff = Math.round((after - before) * 100);
+  const verdict = el(
+    "p",
+    `delta-verdict ${diff > 0 ? "status-ok" : diff < 0 ? "status-error" : ""}`
+  );
+  if (diff > 0) {
+    verdict.textContent = `✓ 提升了 ${diff} 个百分点（${percent(before)} → ${percent(after)}）。这次的改动管用！`;
+  } else if (diff < 0) {
+    verdict.textContent = `↓ 下降了 ${-diff} 个百分点（${percent(before)} → ${percent(after)}）。回头想想，这次的改动可能差在哪里。`;
+  } else {
+    verdict.textContent = `基本持平（${percent(after)}）。换一个地方改改再试试，比如数据量或模型。`;
+  }
+  box.appendChild(verdict);
+  return box;
+}
+
+function deltaBar(label, value, isNow) {
+  const row = el("div", "delta-row");
+  row.appendChild(el("span", "delta-name", label));
+  const track = el("div", "delta-track");
+  const bar = el("div", `delta-bar${isNow ? " delta-bar-now" : ""}`);
+  bar.style.width = `${Math.max(2, Math.round(value * 100))}%`;
+  track.appendChild(bar);
+  row.appendChild(track);
+  row.appendChild(el("span", "delta-val", percent(value)));
+  return row;
+}
+
+function renderTopFeatures(top) {
+  const wrap = el("div", "topfeat-wrap");
+  wrap.appendChild(el("p", "field-label", "模型眼中，每类最有代表性的词"));
+  for (const [label, grams] of Object.entries(top)) {
+    if (!grams || !grams.length) continue;
+    const row = el("div", "topfeat-row");
+    row.appendChild(el("span", "topfeat-label", label));
+    const chips = el("div", "topfeat-chips");
+    for (const gram of grams) chips.appendChild(el("span", "topfeat-chip", gram));
+    row.appendChild(chips);
+    wrap.appendChild(row);
+  }
+  wrap.appendChild(
+    el(
+      "p",
+      "report-classes",
+      "和你的直觉一致吗？换成随机森林这类模型就看不到这张表了——" +
+        "只有线性模型能说清「每个词有多重要」。"
+    )
+  );
   return wrap;
 }
 
@@ -1468,14 +1553,17 @@ function mountEvalSampleButton() {
   }
 }
 
+let evalTally = { correct: 0, total: 0 };
+
 function evalSampleWrap() {
+  evalTally = { correct: 0, total: 0 };
   const wrap = el("div", "eval-sample");
   wrap.id = "eval-sample-wrap";
   wrap.appendChild(
     el(
       "p",
       "eval-sample-hint",
-      "数据集自带测试集（训练时模型没见过）。点下面随机抽一题，检验真实效果。"
+      "数据集里留了一批「考题」，训练时模型没见过。点下面随机抽一题，看它真实水平如何。多抽几题，正确率才稳。"
     )
   );
   const button = el("button", "btn-secondary", "从测试集随机抽一题");
@@ -1485,6 +1573,11 @@ function evalSampleWrap() {
     try {
       const sample = await postJson("/eval/sample", {});
       renderEvalSample(sample);
+      const correct = (sample.prediction || {}).label === sample.true_label;
+      evalTally.total += 1;
+      if (correct) evalTally.correct += 1;
+      updateEvalTally();
+      button.textContent = "再抽一题";
       stepsDone[2] = true;
       refreshChecks();
     } catch (error) {
@@ -1494,7 +1587,27 @@ function evalSampleWrap() {
     }
   });
   wrap.appendChild(button);
+  const tally = el("p", "eval-tally");
+  tally.id = "eval-tally";
+  tally.hidden = true;
+  wrap.appendChild(tally);
   return wrap;
+}
+
+function updateEvalTally() {
+  const node = document.getElementById("eval-tally");
+  if (!node) return;
+  if (evalTally.total === 0) {
+    node.hidden = true;
+    return;
+  }
+  node.hidden = false;
+  const rate = Math.round((evalTally.correct / evalTally.total) * 100);
+  const tail =
+    evalTally.total < 5
+      ? "才抽这么几题，这个数字还会上下跳——单看一两题不算数。"
+      : "抽得越多，越接近模型的真实水平。";
+  node.textContent = `已抽 ${evalTally.total} 题，答对 ${evalTally.correct} 题，累计正确率 ${rate}%。${tail}`;
 }
 
 function renderEvalSample(sample) {

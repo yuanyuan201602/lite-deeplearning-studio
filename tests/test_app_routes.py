@@ -128,6 +128,28 @@ def test_general_task_project_full_flow(tmp_path: Path) -> None:
     assert "通用文本练习" in page.text
 
 
+def test_training_appends_to_history(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(client, "general_ml", "general_text_classifier", "历史练习")
+    client.post(
+        f"/api/projects/{project_id}/data/text",
+        json={
+            "samples": [
+                {"text": "晴天 出门 散步", "label": "好天气"},
+                {"text": "阳光 温暖 舒适", "label": "好天气"},
+                {"text": "暴雨 打雷 进屋", "label": "坏天气"},
+                {"text": "大风 降温 添衣", "label": "坏天气"},
+            ]
+        },
+    )
+
+    first = client.post(f"/api/projects/{project_id}/train").json()
+    assert len(first["project"]["train_history"]) == 1
+    second = client.post(f"/api/projects/{project_id}/train").json()
+    assert len(second["project"]["train_history"]) == 2
+    assert second["project"]["train_history"][-1]["model_name"]
+
+
 def test_smart_museum_edition_only_shows_smart_museum(tmp_path: Path) -> None:
     client = make_client(tmp_path, edition="smart_museum")
 

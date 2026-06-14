@@ -2676,3 +2676,321 @@ body.tutorial-locked {
   color: var(--soft);
   margin-bottom: 6px;
 }
+
+/* ===== 训练报告：和上次相比（E01/E04/E05 前后对比） ===== */
+.delta-box {
+  margin: 12px 0;
+  padding: 12px 14px;
+  background: var(--surface-warm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.delta-change {
+  font-size: 13px;
+  color: var(--soft);
+  margin: 4px 0 10px;
+}
+
+.delta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.delta-name {
+  width: 32px;
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.delta-track {
+  flex: 1;
+  height: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.delta-bar {
+  height: 100%;
+  background: var(--muted);
+  border-radius: 999px;
+}
+
+.delta-bar-now {
+  background: var(--accent);
+}
+
+.delta-val {
+  width: 48px;
+  flex: none;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.delta-verdict {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.delta-verdict.status-ok {
+  color: var(--ok);
+}
+
+.delta-verdict.status-error {
+  color: var(--warning);
+}
+
+/* ===== 训练报告：词权重（文本任务代表词） ===== */
+.topfeat-wrap {
+  margin-top: 14px;
+}
+
+.topfeat-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 6px 0;
+}
+
+.topfeat-label {
+  min-width: 64px;
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.topfeat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.topfeat-chip {
+  font-size: 12px;
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+/* ===== 测试集累计抽样（E07） ===== */
+.eval-tally {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--soft);
+  background: var(--surface-warm);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+/* ===== 深度学习地图：互动演示（阶段 3） ===== */
+.demo {
+  margin: 18px 0;
+}
+
+.demo-card {
+  background: var(--surface-warm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 16px 18px;
+}
+
+.demo-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--accent-deep);
+  margin: 0 0 4px;
+}
+
+.demo-intro {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0 0 12px;
+}
+
+.demo-svg {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.demo-readout {
+  font-size: 13.5px;
+  color: var(--soft);
+  line-height: 1.7;
+  margin: 10px 0 0;
+}
+
+.demo-readout b {
+  color: var(--text);
+}
+
+.demo-axis {
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+
+.demo-axislab {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.demo-curve {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
+
+.demo-marker {
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.demo-dot {
+  fill: var(--accent-strong);
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.demo-slider {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  margin: 12px auto 0;
+  accent-color: var(--accent);
+}
+
+.net-edge {
+  stroke: var(--line);
+  stroke-width: 1.2;
+  transition: stroke 0.25s, stroke-width 0.25s;
+}
+
+.net-edge.lit {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+
+.net-node {
+  stroke-width: 2;
+  transition: fill 0.25s, stroke 0.25s;
+}
+
+.net-in {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  cursor: pointer;
+}
+
+.net-in:hover {
+  fill: var(--accent);
+}
+
+.net-hid {
+  fill: var(--surface);
+  stroke: var(--muted);
+}
+
+.net-out {
+  fill: var(--surface);
+  stroke: var(--soft);
+}
+
+.net-node.lit {
+  fill: var(--accent);
+  stroke: var(--accent-strong);
+}
+
+.pt {
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.pt-a {
+  fill: var(--accent);
+}
+
+.pt-b {
+  fill: #4a6b8a;
+}
+
+.demo-boundary {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.demo-boundary.boundary-overfit {
+  stroke: var(--warning);
+  stroke-width: 2;
+}
+
+.demo-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.demo-tab {
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--soft);
+  cursor: pointer;
+}
+
+.demo-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* 小标题 + Python 代码片段 */
+.learn-subhead {
+  font-family: var(--font-display);
+  font-size: 18px;
+  margin: 22px 0 8px;
+  color: var(--text);
+}
+
+.learn-code-figure {
+  background: #2b2a27;
+  border-color: #2b2a27;
+  text-align: left;
+}
+
+.learn-code {
+  margin: 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #f0ede4;
+  white-space: pre;
+  overflow-x: auto;
+  text-align: left;
+}
+
+.learn-code-figure figcaption {
+  color: #b0aaa0;
+  text-align: center;
+}

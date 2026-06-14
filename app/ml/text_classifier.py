@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import joblib
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
 
@@ -25,6 +26,44 @@ def build_pipeline(model_choice: str = DEFAULT_MODEL, sample_count: int = 0) -> 
             ("clf", classifiers.make_classifier(model_choice, sample_count)),
         ]
     )
+
+
+def top_features_per_class(model: Pipeline, top_n: int = 6) -> dict[str, list[str]] | None:
+    """Highest-weighted char n-grams per class, for the word-weight visualization.
+
+    Only linear models expose per-class weights (`coef_`), so this returns None for
+    tree/forest/MLP. char_wb grams are space-padded at word edges, so we strip them
+    and keep grams of length ≥ 2 to show readable "代表词" instead of single chars.
+    """
+    clf = model.named_steps["clf"]
+    if not hasattr(clf, "coef_"):
+        return None
+    names = model.named_steps["tfidf"].get_feature_names_out()
+    coef = np.asarray(clf.coef_)
+    classes = [str(label) for label in clf.classes_]
+
+    def clean(order: np.ndarray) -> list[str]:
+        seen: set[str] = set()
+        grams: list[str] = []
+        for index in order:
+            gram = str(names[index]).strip()
+            if len(gram) >= 2 and gram not in seen:
+                seen.add(gram)
+                grams.append(gram)
+            if len(grams) >= top_n:
+                break
+        return grams
+
+    result: dict[str, list[str]] = {}
+    if coef.shape[0] == 1 and len(classes) == 2:
+        ascending = np.argsort(coef[0])
+        result[classes[1]] = clean(ascending[::-1])
+        result[classes[0]] = clean(ascending)
+    else:
+        for index, label in enumerate(classes):
+            if index < coef.shape[0]:
+                result[label] = clean(np.argsort(coef[index])[::-1])
+    return result or None
 
 
 def _prepare(samples: list[dict[str, str]]) -> tuple[list[str], list[str], dict[str, int]]:
@@ -69,6 +108,7 @@ def train(
         "train_accuracy": train_accuracy,
         "cross_val_accuracy": cross_val_accuracy,
         "confusion": confusion,
+        "top_features": top_features_per_class(model),
         "model_choice": choice,
         "model_name": classifiers.CLASSIFIER_INFO[choice]["name"],
         "trained_at": now_text(),

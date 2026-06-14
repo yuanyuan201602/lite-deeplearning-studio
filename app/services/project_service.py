@@ -526,8 +526,23 @@ class ProjectService:
             feature_mode,
         )
         info.train_report = report
+        info.train_history = self._appended_history(info.train_history, report)
         self._save_info(info)
         return report
+
+    @staticmethod
+    def _appended_history(history: list[dict], report: dict[str, Any]) -> list[dict]:
+        """Keep a short rolling log of each training's headline metrics for the
+        before/after comparison; only the last few matter, so cap the list."""
+        entry = {
+            "trained_at": report.get("trained_at"),
+            "sample_count": report.get("sample_count"),
+            "model_name": report.get("model_name"),
+            "feature_mode": report.get("feature_mode"),
+            "train_accuracy": report.get("train_accuracy"),
+            "cross_val_accuracy": report.get("cross_val_accuracy"),
+        }
+        return (history + [entry])[-8:]
 
     def compare_models(
         self, info: ProjectInfo, capability: str, feature_mode: str | None = None

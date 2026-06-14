@@ -111,6 +111,9 @@ class ProjectInfo(BaseModel):
     created_at: str
     updated_at: str
     train_report: dict | None = None
+    # Compact per-training metrics (most recent last), powering the "和上次相比"
+    # before/after comparison. Capped to the last few entries by ProjectService.
+    train_history: list[dict] = Field(default_factory=list)
     export_file: str = ""
 
 

@@ -341,6 +341,25 @@ def test_train_report_includes_confusion_matrix(tmp_path: Path) -> None:
     assert confusion["basis"] in {"cross_val", "train"}
 
 
+def test_text_train_reports_top_features(tmp_path: Path) -> None:
+    meta = text_classifier.train(TEXT_SAMPLES, tmp_path)
+
+    top = meta["top_features"]
+    assert top is not None  # logistic regression exposes per-class weights
+    assert set(top) == {"传统戏剧", "传统技艺"}
+    assert all(isinstance(grams, list) for grams in top.values())
+    # At least one class surfaces readable (≥2-char) representative grams.
+    assert any(grams for grams in top.values())
+    assert all(len(gram) >= 2 for grams in top.values() for gram in grams)
+
+
+def test_top_features_none_for_non_linear_model(tmp_path: Path) -> None:
+    meta = text_classifier.train(TEXT_SAMPLES, tmp_path, model_choice="random_forest")
+
+    # Tree ensembles have no per-class linear weights, so no keyword view.
+    assert meta["top_features"] is None
+
+
 def test_ocr_checker_handles_length_mismatch(tmp_path: Path) -> None:
     ocr_checker.train("保护为主抢救第一", tmp_path)
 

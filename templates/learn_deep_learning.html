@@ -71,8 +71,10 @@
         <li><b>数据少、是表格数值</b>（像传感器决策）：传统机器学习往往又快又好，还看得懂规则。</li>
         <li><b>数据多、是图像/声音/长文本</b>：深度学习的优势才显现，因为这些数据的「线索」太复杂，人很难手工设计。</li>
       </ul>
-      <p>本平台让你亲手训练传统模型，同时用预训练的深度网络（MobileNet）帮你提取图像特征——两者的好处都占一点。</p>
+      <p>本平台让你亲手训练传统模型，同时用预训练的深度网络（MobileNet）帮你提取图像特征——两边的长处都用上一点。</p>
     </div>
+
+    <div class="demo" id="demo-datasize"></div>
   </section>
 
   <!-- ============ 第 2 节 ============ -->
@@ -125,6 +127,9 @@
         网络才能画出弯曲的分界线，去对付复杂的数据。</li>
       <li><b>代价</b>：层数越多，网络越强大，但也越像个「黑箱」——你很难再读出它学到的具体规则（这点正好和决策树相反）。</li>
     </ul>
+
+    <div class="demo" id="demo-forward"></div>
+    <div class="demo" id="demo-boundary"></div>
   </section>
 
   <!-- ============ 第 3 节 ============ -->
@@ -289,6 +294,26 @@
       </ol>
     </div>
 
+    <h3 class="learn-subhead">附：同样的事，用 Python 怎么写</h3>
+    <p>你在平台上点的那个「训练」按钮，背后其实就是下面这几行代码。等你学了 Python，可以亲手把它敲出来——这正是导出包里 <code>train.py</code> 的核心。</p>
+    <figure class="learn-figure learn-code-figure">
+      <pre class="learn-code">from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+
+texts  = ["今天天气真好", "糟糕透了"]   # 你准备的数据
+labels = ["正面",         "负面"]       # 每条对应的标签
+
+model = Pipeline([
+    ("tfidf", TfidfVectorizer()),       # 把文字变成数字
+    ("clf", LogisticRegression()),      # 学习怎么分类
+])
+model.fit(texts, labels)                # 这一行，就是「训练」
+
+print(model.predict(["心情不错"]))      # 用训练好的模型预测新句子</pre>
+      <figcaption>十来行代码，就走完了「准备数据 → 训练 → 预测」。平台只是把它变成了点按钮。</figcaption>
+    </figure>
+
     <div class="learn-footer-links">
       <a class="btn-secondary" href="/">← 回到工作台开始练习</a>
       <button class="btn-secondary" type="button" id="open-glossary">不懂的词？查术语表</button>
@@ -304,4 +329,5 @@
       }, 120);
     });
   </script>
+  <script src="{{ url_for('static', path='/learn.js') }}?v={{ asset_version }}"></script>
 {% endblock %}
