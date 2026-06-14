@@ -51,6 +51,11 @@ class TaskDefinition(BaseModel):
     starter_steps: list[str]
     concept_intro: str = ""
     step_guides: list[str] = Field(default_factory=list)
+    # Education enrichment (general practice tasks). Empty = section hidden.
+    real_world_examples: list[str] = Field(default_factory=list)
+    common_mistakes: list[str] = Field(default_factory=list)
+    hands_on_experiments: list[str] = Field(default_factory=list)
+    next_steps: str = ""
 
 
 class CompetitionDefinition(BaseModel):

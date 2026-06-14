@@ -1974,3 +1974,705 @@ body.tutorial-locked {
   padding: 1px 5px;
   font-size: 12px;
 }
+
+/* ===== 深度学习地图页 /learn/deep-learning ===== */
+.learn-hero {
+  margin: 8px 0 28px;
+}
+
+.learn-hero h1 {
+  font-family: var(--font-display);
+  font-size: 34px;
+  margin: 6px 0 14px;
+}
+
+.learn-lead {
+  font-size: 16px;
+  line-height: 1.85;
+  color: var(--soft);
+  max-width: 760px;
+}
+
+.learn-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.learn-toc a {
+  font-size: 13px;
+  color: var(--soft);
+  background: var(--surface-warm);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 14px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.learn-toc a:hover {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.learn-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px 30px;
+  margin-bottom: 22px;
+  scroll-margin-top: 80px;
+}
+
+.learn-section > h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  margin: 0 0 14px;
+  color: var(--accent-deep);
+}
+
+.learn-section > p {
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--text);
+  margin: 0 0 14px;
+}
+
+.learn-points {
+  margin: 0 0 16px;
+  padding-left: 22px;
+}
+
+.learn-points li {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--soft);
+  margin-bottom: 10px;
+}
+
+.learn-points b,
+.learn-section p strong {
+  color: var(--text);
+}
+
+.learn-figure {
+  margin: 18px 0;
+  padding: 18px;
+  background: var(--surface-warm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.learn-figure svg {
+  width: 100%;
+  height: auto;
+  max-width: 720px;
+}
+
+.learn-figure figcaption {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.learn-callout {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+
+.learn-callout p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.learn-callout ul,
+.learn-callout ol {
+  margin: 6px 0;
+  padding-left: 22px;
+}
+
+.learn-callout li {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--soft);
+  margin-bottom: 6px;
+}
+
+.learn-callout li b {
+  color: var(--text);
+}
+
+.learn-aside {
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--muted);
+  background: var(--surface-warm);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+}
+
+.learn-path {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+
+.learn-path li {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--soft);
+  margin-bottom: 8px;
+}
+
+.learn-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.learn-section code {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+}
+
+/* --- SVG 图示通用 --- */
+.learn-figure svg text {
+  fill: var(--text);
+  font-size: 13px;
+  text-anchor: middle;
+  font-family: inherit;
+}
+
+.dl-sub {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.dl-svg-note {
+  font-size: 12px;
+  fill: var(--soft);
+  font-style: italic;
+}
+
+.dl-svg-tag {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--accent-strong);
+  text-anchor: start;
+}
+
+.dl-svg-tag.dl-mid,
+.dl-svg-note.dl-mid,
+.dl-sub.dl-mid {
+  text-anchor: middle;
+}
+
+.dl-box rect {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+
+.dl-box-human rect {
+  fill: var(--accent-soft);
+  stroke: var(--accent-strong);
+}
+
+.dl-box-deep rect {
+  fill: var(--ok-soft);
+  stroke: var(--ok);
+}
+
+.dl-box-out rect {
+  fill: var(--surface-warm);
+  stroke: var(--line);
+}
+
+.dl-arrow line {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+}
+
+.dl-arrow polygon {
+  fill: var(--muted);
+}
+
+.dl-net-line line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.dl-node circle {
+  stroke-width: 2;
+}
+
+.dl-node-in circle {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+}
+
+.dl-node-hidden circle {
+  fill: var(--ok-soft);
+  stroke: var(--ok);
+}
+
+.dl-node-out circle {
+  fill: var(--surface-warm);
+  stroke: var(--soft);
+}
+
+.dl-bracket {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.dl-timeline {
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.dl-tl circle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.dl-tl-name {
+  font-weight: 600;
+  fill: var(--text);
+}
+
+.dl-tl-here circle {
+  fill: var(--accent);
+}
+
+.dl-tl-badge {
+  fill: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dl-wave {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.dl-spec rect {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.dl-layer rect {
+  stroke-width: 1.5;
+}
+
+.dl-layer-classic rect,
+.dl-layer-mid rect {
+  fill: var(--ok-soft);
+  stroke: var(--ok);
+}
+
+.dl-layer-deep rect {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+}
+
+.dl-layer-title {
+  font-weight: 700;
+  fill: var(--text);
+  text-anchor: start;
+}
+
+.dl-layer .dl-sub {
+  text-anchor: start;
+}
+
+.dl-layer-flag {
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: end;
+}
+
+.dl-flag-train {
+  fill: var(--ok);
+}
+
+.dl-flag-show {
+  fill: var(--accent-strong);
+}
+
+/* 首页进阶学习入口横幅 */
+.learn-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 24px;
+  background: linear-gradient(120deg, var(--accent-soft), var(--surface-warm));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: all 0.18s ease;
+}
+
+.learn-banner:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.learn-banner h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  margin: 4px 0 6px;
+  color: var(--accent-deep);
+}
+
+.learn-banner p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--soft);
+  line-height: 1.7;
+  max-width: 620px;
+}
+
+.learn-banner-go {
+  flex: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-strong);
+  white-space: nowrap;
+}
+
+/* ===== 新手教程新增块（传统vsML / 实验思维 / 混淆矩阵） ===== */
+.tut-compare {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.tut-compare-col {
+  background: var(--surface-warm);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.tut-compare-head {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--accent-strong);
+  margin: 0 0 6px;
+}
+
+.tut-code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  color: var(--text);
+  margin: 0 0 6px;
+  overflow-x: auto;
+}
+
+.tut-compare-note {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.tut-callout {
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 14px 0;
+}
+
+.tut-callout-head {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--accent-deep);
+  margin: 0 0 6px;
+}
+
+.tut-callout p {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--soft);
+  margin: 0 0 6px;
+}
+
+.tut-callout p:last-child {
+  margin-bottom: 0;
+}
+
+.tut-subhead {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 18px 0 6px;
+}
+
+.tut-figure {
+  text-align: center;
+  margin: 12px 0;
+}
+
+.tut-figure svg {
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+}
+
+.tut-figure svg text {
+  font-family: inherit;
+}
+
+.tut-figure figcaption {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
+.cm-axis {
+  font-size: 11px;
+  fill: var(--muted);
+  text-anchor: middle;
+}
+
+.cm-lab {
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--soft);
+  text-anchor: middle;
+}
+
+.cm-cell text {
+  font-size: 18px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.cm-diag rect {
+  fill: var(--ok-soft);
+  stroke: var(--ok);
+  stroke-width: 1.5;
+}
+
+.cm-diag text {
+  fill: var(--ok);
+}
+
+.cm-off rect {
+  fill: var(--accent-soft);
+  stroke: var(--accent-strong);
+  stroke-width: 1.5;
+}
+
+.cm-off text {
+  fill: var(--accent-strong);
+}
+
+/* ===== 训练报告：混淆矩阵表格 ===== */
+.confusion-wrap {
+  margin-top: 14px;
+}
+
+.confusion-scroll {
+  overflow-x: auto;
+  margin: 6px 0;
+}
+
+.confusion-table {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.confusion-table th,
+.confusion-table td {
+  border: 1px solid var(--line);
+  padding: 7px 12px;
+  text-align: center;
+  min-width: 44px;
+}
+
+.confusion-table th {
+  background: var(--surface-warm);
+  color: var(--soft);
+  font-weight: 600;
+}
+
+.confusion-table th.cm-corner {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.confusion-table th.cm-rowhead {
+  text-align: right;
+}
+
+.confusion-table td {
+  color: var(--muted);
+}
+
+.confusion-table td.cm-c-diag {
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.confusion-table td.cm-c-off {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.compare-interp {
+  margin: 10px 0 4px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+/* ===== 任务页教育块：动手实验 / 常见误区 / 下一步 ===== */
+.edu-block {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-warm);
+  padding: 4px 14px;
+}
+
+.edu-block summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--accent-strong);
+  padding: 8px 0;
+  list-style: none;
+}
+
+.edu-block summary::-webkit-details-marker {
+  display: none;
+}
+
+.edu-block[open] summary {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+
+.edu-block-warn summary {
+  color: var(--warning);
+}
+
+.edu-mark {
+  margin-right: 6px;
+}
+
+.edu-intro {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 4px 0 8px;
+  line-height: 1.7;
+}
+
+.edu-list {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+
+.edu-list li {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--soft);
+  margin-bottom: 8px;
+}
+
+.edu-next {
+  margin-top: 16px;
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+}
+
+.edu-next-head {
+  font-weight: 600;
+  color: var(--accent-deep);
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.edu-next p:last-child {
+  margin: 0;
+  font-size: 14px;
+  color: var(--soft);
+  line-height: 1.8;
+}
+
+/* ===== 任务介绍页：生活中的例子 ===== */
+.examples-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px 26px;
+  margin-bottom: 18px;
+}
+
+.examples-card h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+
+.examples-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.examples-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.examples-card li {
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--soft);
+  margin-bottom: 6px;
+}

@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}深度学习地图 · {{ app_title }}{% endblock %}
+
+{% block content %}
+  <nav class="crumbs">
+    <a href="/">工作台</a> / 深度学习地图
+  </nav>
+
+  <section class="learn-hero">
+    <p class="eyebrow">✻ 进阶学习</p>
+    <h1>深度学习地图</h1>
+    <p class="learn-lead">
+      你在工作台上训练的，是经典机器学习模型。它们轻巧、好懂、在普通电脑上就能跑。
+      但你一定听过「深度学习」「神经网络」「大模型」——它们到底是什么、和你用的有什么不同？
+      这一页不教你写代码，而是给你一张「地图」：看清各种技术解决什么问题、各自的位置，
+      以及你现在站在哪里、下一步可以往哪走。
+    </p>
+  </section>
+
+  <nav class="learn-toc" aria-label="目录">
+    <a href="#dl-1">1 · 传统机器学习 vs 深度学习</a>
+    <a href="#dl-2">2 · 神经网络长什么样</a>
+    <a href="#dl-3">3 · 图像为什么用 CNN</a>
+    <a href="#dl-4">4 · 文本技术的演进</a>
+    <a href="#dl-5">5 · 声音怎么变成图片</a>
+    <a href="#dl-6">6 · 你在哪里 · 去哪里</a>
+  </nav>
+
+  <!-- ============ 第 1 节 ============ -->
+  <section class="learn-section" id="dl-1">
+    <h2>1 · 传统机器学习 vs 深度学习</h2>
+    <p>
+      两者都是「给例子、让机器自己找规律」，最大的区别只有一个词：<strong>特征是谁找的</strong>。
+    </p>
+    <ul class="learn-points">
+      <li><b>传统机器学习</b>：需要人先想好「看哪些线索」（特征），再交给模型。
+        比如判断水果，人来决定「看颜色、看形状」，模型只负责根据这些线索分类。</li>
+      <li><b>深度学习</b>：把原始数据（整张图、整段声音）直接丢给一个很深的神经网络，
+        让它<strong>自己</strong>从数据里学出该看哪些线索——特征和分类一气呵成。</li>
+    </ul>
+
+    <figure class="learn-figure">
+      <svg viewBox="0 0 720 260" role="img" aria-label="传统机器学习与深度学习的流水线对比">
+        <!-- 传统 ML 行 -->
+        <text x="10" y="44" class="dl-svg-tag">传统机器学习</text>
+        <g class="dl-box"><rect x="120" y="22" width="92" height="44" rx="8"/><text x="166" y="49">原始数据</text></g>
+        <g class="dl-arrow"><line x1="212" y1="44" x2="248" y2="44"/><polygon points="248,40 258,44 248,48"/></g>
+        <g class="dl-box dl-box-human"><rect x="258" y="22" width="118" height="44" rx="8"/><text x="317" y="43">人工设计特征</text><text x="317" y="58" class="dl-sub">（颜色·形状）</text></g>
+        <g class="dl-arrow"><line x1="376" y1="44" x2="412" y2="44"/><polygon points="412,40 422,44 412,48"/></g>
+        <g class="dl-box"><rect x="422" y="22" width="92" height="44" rx="8"/><text x="468" y="49">简单模型</text></g>
+        <g class="dl-arrow"><line x1="514" y1="44" x2="550" y2="44"/><polygon points="550,40 560,44 550,48"/></g>
+        <g class="dl-box dl-box-out"><rect x="560" y="22" width="92" height="44" rx="8"/><text x="606" y="49">结果</text></g>
+        <text x="317" y="84" class="dl-svg-note">特征靠人想 — 想得好不好，直接决定上限</text>
+
+        <!-- 深度学习行 -->
+        <text x="10" y="194" class="dl-svg-tag">深度学习</text>
+        <g class="dl-box"><rect x="120" y="172" width="92" height="44" rx="8"/><text x="166" y="199">原始数据</text></g>
+        <g class="dl-arrow"><line x1="212" y1="194" x2="248" y2="194"/><polygon points="248,190 258,194 248,198"/></g>
+        <g class="dl-box dl-box-deep"><rect x="258" y="160" width="256" height="68" rx="8"/><text x="386" y="188">深层神经网络</text><text x="386" y="206" class="dl-sub">自己学特征 + 自己分类</text></g>
+        <g class="dl-arrow"><line x1="514" y1="194" x2="550" y2="194"/><polygon points="550,190 560,194 550,198"/></g>
+        <g class="dl-box dl-box-out"><rect x="560" y="172" width="92" height="44" rx="8"/><text x="606" y="199">结果</text></g>
+        <text x="386" y="246" class="dl-svg-note">特征自己学 — 数据足够多时，比人想的更准</text>
+      </svg>
+      <figcaption>同一件事的两条路线：区别在「特征」这一步是人做还是网络做。</figcaption>
+    </figure>
+
+    <div class="learn-callout">
+      <p><b>那到底用哪个？</b>没有谁绝对更好——</p>
+      <ul>
+        <li><b>数据少、是表格数值</b>（像传感器决策）：传统机器学习往往又快又好，还看得懂规则。</li>
+        <li><b>数据多、是图像/声音/长文本</b>：深度学习的优势才显现，因为这些数据的「线索」太复杂，人很难手工设计。</li>
+      </ul>
+      <p>本平台让你亲手训练传统模型，同时用预训练的深度网络（MobileNet）帮你提取图像特征——两者的好处都占一点。</p>
+    </div>
+  </section>
+
+  <!-- ============ 第 2 节 ============ -->
+  <section class="learn-section" id="dl-2">
+    <h2>2 · 神经网络长什么样</h2>
+    <p>
+      「神经网络」听起来很玄，其实结构很规整：一排排<strong>神经元</strong>，前一排连到后一排。
+      数据从左边进来，一层层往右传，最后一层给出答案。下面是最基础的一种——<b>多层感知机（MLP）</b>，
+      它就藏在不少任务的训练算法选项里，你随时能选它来体验「神经网络」。
+    </p>
+
+    <figure class="learn-figure">
+      <svg viewBox="0 0 720 280" role="img" aria-label="多层感知机的结构示意">
+        <!-- 连线 -->
+        <g class="dl-net-line">
+          <line x1="150" y1="80" x2="330" y2="60"/><line x1="150" y1="80" x2="330" y2="130"/><line x1="150" y1="80" x2="330" y2="200"/><line x1="150" y1="80" x2="330" y2="240"/>
+          <line x1="150" y1="150" x2="330" y2="60"/><line x1="150" y1="150" x2="330" y2="130"/><line x1="150" y1="150" x2="330" y2="200"/><line x1="150" y1="150" x2="330" y2="240"/>
+          <line x1="150" y1="220" x2="330" y2="60"/><line x1="150" y1="220" x2="330" y2="130"/><line x1="150" y1="220" x2="330" y2="200"/><line x1="150" y1="220" x2="330" y2="240"/>
+          <line x1="330" y1="60" x2="540" y2="110"/><line x1="330" y1="60" x2="540" y2="180"/>
+          <line x1="330" y1="130" x2="540" y2="110"/><line x1="330" y1="130" x2="540" y2="180"/>
+          <line x1="330" y1="200" x2="540" y2="110"/><line x1="330" y1="200" x2="540" y2="180"/>
+          <line x1="330" y1="240" x2="540" y2="110"/><line x1="330" y1="240" x2="540" y2="180"/>
+        </g>
+        <!-- 输入层 -->
+        <g class="dl-node dl-node-in">
+          <circle cx="150" cy="80" r="18"/><circle cx="150" cy="150" r="18"/><circle cx="150" cy="220" r="18"/>
+        </g>
+        <!-- 隐藏层 -->
+        <g class="dl-node dl-node-hidden">
+          <circle cx="330" cy="60" r="18"/><circle cx="330" cy="130" r="18"/><circle cx="330" cy="200" r="18"/><circle cx="330" cy="240" r="18"/>
+        </g>
+        <!-- 输出层 -->
+        <g class="dl-node dl-node-out">
+          <circle cx="540" cy="110" r="18"/><circle cx="540" cy="180" r="18"/>
+        </g>
+        <text x="150" y="262" class="dl-svg-tag dl-mid">输入层</text>
+        <text x="330" y="278" class="dl-svg-tag dl-mid">隐藏层</text>
+        <text x="540" y="222" class="dl-svg-tag dl-mid">输出层</text>
+        <text x="150" y="36" class="dl-svg-note dl-mid">数据进来</text>
+        <text x="540" y="64" class="dl-svg-note dl-mid">给出类别</text>
+      </svg>
+      <figcaption>每个圆圈是一个神经元；线越多，网络能表达的规律越复杂。隐藏层可以有很多层——「深度」学习的「深」就来自这里。</figcaption>
+    </figure>
+
+    <ul class="learn-points">
+      <li><b>它怎么学？</b>一开始连线的「权重」是随机的，预测全靠猜。每看一批例子，
+        网络就比对「猜的」和「正确答案」差多少，然后<strong>微微调整</strong>每根线的权重，让下次猜得更准一点。
+        反复成千上万次，就学会了——这个「对照答案、回头微调」的过程叫<b>反向传播</b>。</li>
+      <li><b>激活函数</b>：如果只是简单相加，网络只能画直线分界。加一个小小的「激活函数」，
+        网络才能画出弯曲的分界线，去对付复杂的数据。</li>
+      <li><b>代价</b>：层数越多，网络越强大，但也越像个「黑箱」——你很难再读出它学到的具体规则（这点正好和决策树相反）。</li>
+    </ul>
+  </section>
+
+  <!-- ============ 第 3 节 ============ -->
+  <section class="learn-section" id="dl-3">
+    <h2>3 · 图像为什么用 CNN</h2>
+    <p>
+      一张图有几万甚至几十万个像素，如果把每个像素都当成一个独立线索丢进普通网络，又慢又学不好。
+      <strong>卷积神经网络（CNN）</strong>换了个聪明的思路：不一次看整张图，而是拿一个小窗口
+      在图上滑动，<strong>一块一块地看</strong>，先找小特征，再把小特征拼成大特征。
+    </p>
+
+    <figure class="learn-figure">
+      <svg viewBox="0 0 720 220" role="img" aria-label="卷积网络从像素到语义的层次特征">
+        <g class="dl-box"><rect x="20" y="78" width="96" height="60" rx="8"/><text x="68" y="104">图片</text><text x="68" y="122" class="dl-sub">224×224 像素</text></g>
+        <g class="dl-arrow"><line x1="116" y1="108" x2="150" y2="108"/><polygon points="150,104 160,108 150,112"/></g>
+
+        <g class="dl-box dl-box-deep"><rect x="160" y="70" width="120" height="76" rx="8"/><text x="220" y="96">浅层</text><text x="220" y="114" class="dl-sub">看边缘、颜色块</text></g>
+        <g class="dl-arrow"><line x1="280" y1="108" x2="306" y2="108"/><polygon points="306,104 316,108 306,112"/></g>
+        <g class="dl-box dl-box-deep"><rect x="316" y="70" width="120" height="76" rx="8"/><text x="376" y="96">中层</text><text x="376" y="114" class="dl-sub">看形状、纹理</text></g>
+        <g class="dl-arrow"><line x1="436" y1="108" x2="462" y2="108"/><polygon points="462,104 472,108 462,112"/></g>
+        <g class="dl-box dl-box-deep"><rect x="472" y="70" width="120" height="76" rx="8"/><text x="532" y="96">深层</text><text x="532" y="114" class="dl-sub">看「像不像猫」</text></g>
+
+        <g class="dl-arrow"><line x1="592" y1="108" x2="618" y2="108"/><polygon points="618,104 628,108 618,112"/></g>
+        <g class="dl-box dl-box-out"><rect x="628" y="78" width="80" height="60" rx="8"/><text x="668" y="104">特征</text><text x="668" y="122" class="dl-sub">向量</text></g>
+        <text x="376" y="40" class="dl-svg-note dl-mid">越往深，看到的东西越「抽象」、越接近语义</text>
+        <rect x="158" y="62" width="436" height="92" rx="10" class="dl-bracket"/>
+        <text x="376" y="176" class="dl-svg-tag dl-mid">这一整段就是 MobileNet 帮你做的</text>
+      </svg>
+      <figcaption>浅层看笔画级的边缘，深层看「整体像什么」。这种层层递进的特征，是 CNN 在图像上强大的原因。</figcaption>
+    </figure>
+
+    <div class="learn-callout">
+      <p><b>你在平台上其实已经用到它了。</b>当图像任务选「MobileNet 迁移学习」时：</p>
+      <ul>
+        <li>MobileNet（一个已经在上百万张图片上训练好的 CNN）负责上图中间那段，把你的图片变成一串浓缩了语义的<b>特征向量</b>；</li>
+        <li>你训练的，只是最后那个小小的分类器——用 MobileNet 给的好特征，几张图就能学得不错。</li>
+      </ul>
+      <p>这种「借用别人训练好的网络」的做法，叫<b>迁移学习</b>。它让没有显卡的普通电脑也能用上深度学习的好处。</p>
+    </div>
+  </section>
+
+  <!-- ============ 第 4 节 ============ -->
+  <section class="learn-section" id="dl-4">
+    <h2>4 · 文本技术的演进</h2>
+    <p>
+      让机器「读懂」文字比图像更难——因为意思藏在词的顺序和上下文里。这几十年，方法一路升级，
+      每一步都在解决前一步的短板。你平台上用的 <b>TF-IDF</b> 处在这条路的早期，可靠但不懂语义。
+    </p>
+
+    <figure class="learn-figure">
+      <svg viewBox="0 0 720 170" role="img" aria-label="文本分类技术的演进时间轴">
+        <line x1="40" y1="70" x2="690" y2="70" class="dl-timeline"/>
+        <!-- 节点 -->
+        <g class="dl-tl">
+          <circle cx="80" cy="70" r="6"/><text x="80" y="50" class="dl-tl-name">词袋</text><text x="80" y="96" class="dl-sub">只看词出没出现</text>
+        </g>
+        <g class="dl-tl dl-tl-here">
+          <circle cx="210" cy="70" r="7"/><text x="210" y="44" class="dl-tl-name">TF-IDF</text><text x="210" y="96" class="dl-sub">看词的重要性</text><text x="210" y="112" class="dl-tl-badge">平台在用</text>
+        </g>
+        <g class="dl-tl">
+          <circle cx="340" cy="70" r="6"/><text x="340" y="50" class="dl-tl-name">词向量</text><text x="340" y="96" class="dl-sub">让相近词靠近</text>
+        </g>
+        <g class="dl-tl">
+          <circle cx="470" cy="70" r="6"/><text x="470" y="50" class="dl-tl-name">LSTM</text><text x="470" y="96" class="dl-sub">按顺序读、记上下文</text>
+        </g>
+        <g class="dl-tl">
+          <circle cx="640" cy="70" r="6"/><text x="640" y="50" class="dl-tl-name">Transformer / BERT</text><text x="640" y="96" class="dl-sub">真正理解全局语义</text>
+        </g>
+      </svg>
+      <figcaption>从「只数词」到「懂语义」，越往右越强，但也越吃数据和算力。今天的大模型（ChatGPT 等）都建立在最右边的 Transformer 上。</figcaption>
+    </figure>
+
+    <ul class="learn-points">
+      <li><b>词袋 / TF-IDF</b>：把句子拆成词来数，谁出现得多又特别就更重要。完全不管词的顺序，
+        但简单、快、在很多任务上够用——所以平台用它做入门。</li>
+      <li><b>词向量</b>（Word2Vec、fastText）：把每个词变成一串数字，让「猫」和「狗」这种意思相近的词，数字也相近。</li>
+      <li><b>LSTM</b>：按顺序一个词一个词地读，能记住前文——「不好吃」和「好吃」的区别它能抓到。</li>
+      <li><b>Transformer / BERT</b>：一次看整句话里所有词的相互关系，理解最深。代价是需要显卡训练、模型很大。</li>
+    </ul>
+  </section>
+
+  <!-- ============ 第 5 节 ============ -->
+  <section class="learn-section" id="dl-5">
+    <h2>5 · 声音怎么变成图片</h2>
+    <p>
+      声音是一条随时间起伏的波。深度学习处理声音有个巧妙的招：先把这条波变成一张
+      <strong>频谱图</strong>——横轴是时间、纵轴是音高、颜色深浅是响度——然后<strong>当成图片</strong>，
+      直接用上一节的 CNN 来识别。
+    </p>
+
+    <figure class="learn-figure">
+      <svg viewBox="0 0 720 180" role="img" aria-label="声音转成频谱图再用CNN分类">
+        <!-- 波形 -->
+        <g class="dl-box"><rect x="20" y="60" width="150" height="60" rx="8"/></g>
+        <polyline class="dl-wave" points="34,90 46,72 58,104 70,80 82,98 94,66 106,108 118,84 130,96 142,76 154,100"/>
+        <text x="95" y="138" class="dl-sub dl-mid">声波</text>
+        <g class="dl-arrow"><line x1="170" y1="90" x2="206" y2="90"/><polygon points="206,86 216,90 206,94"/></g>
+
+        <!-- 频谱图 -->
+        <g class="dl-spec" transform="translate(216,60)">
+          <rect x="0" y="0" width="150" height="60" rx="8"/>
+        </g>
+        <text x="291" y="138" class="dl-sub dl-mid">频谱图（像一张图片）</text>
+        <g class="dl-arrow"><line x1="366" y1="90" x2="402" y2="90"/><polygon points="402,86 412,90 402,94"/></g>
+
+        <g class="dl-box dl-box-deep"><rect x="412" y="56" width="120" height="68" rx="8"/><text x="472" y="86">CNN</text><text x="472" y="104" class="dl-sub">和认图片一样</text></g>
+        <g class="dl-arrow"><line x1="532" y1="90" x2="568" y2="90"/><polygon points="568,86 578,90 568,94"/></g>
+        <g class="dl-box dl-box-out"><rect x="578" y="60" width="120" height="60" rx="8"/><text x="638" y="86">声音类别</text><text x="638" y="104" class="dl-sub">开灯 / 关灯…</text></g>
+      </svg>
+      <figcaption>把「听」变成「看」，是音频深度学习的核心思路。YAMNet 等现成模型就是这么做的。</figcaption>
+    </figure>
+
+    <p class="learn-aside">
+      平台目前用的是更轻量的办法：直接从声波算出响度、音高分布等几十个数字当特征，普通电脑就能跑，
+      不需要显卡。原理朴素，但对「开灯 / 关灯」这类区分明显的短指令已经够用。
+    </p>
+  </section>
+
+  <!-- ============ 第 6 节 ============ -->
+  <section class="learn-section" id="dl-6">
+    <h2>6 · 你在哪里 · 去哪里</h2>
+    <p>
+      把这一整页连起来看，整个机器学习的世界大致分三层。平台带你站稳了最底下两层，
+      也让你<strong>看见</strong>了最上面一层。
+    </p>
+
+    <figure class="learn-figure">
+      <svg viewBox="0 0 720 250" role="img" aria-label="机器学习技术分层地图与平台覆盖范围">
+        <!-- 深度层 -->
+        <g class="dl-layer dl-layer-deep">
+          <rect x="60" y="20" width="600" height="56" rx="10"/>
+          <text x="80" y="44" class="dl-layer-title">深度模型</text>
+          <text x="80" y="62" class="dl-sub">ResNet · ViT · BERT · Whisper…（需显卡训练）</text>
+          <text x="640" y="52" class="dl-layer-flag dl-flag-show">平台展示 / 借用特征</text>
+        </g>
+        <!-- 轻量神经网络层 -->
+        <g class="dl-layer dl-layer-mid">
+          <rect x="60" y="92" width="600" height="56" rx="10"/>
+          <text x="80" y="116" class="dl-layer-title">轻量神经网络</text>
+          <text x="80" y="134" class="dl-sub">多层感知机 MLP（CPU 可训练）</text>
+          <text x="640" y="124" class="dl-layer-flag dl-flag-train">平台可训练</text>
+        </g>
+        <!-- 经典层 -->
+        <g class="dl-layer dl-layer-classic">
+          <rect x="60" y="164" width="600" height="56" rx="10"/>
+          <text x="80" y="188" class="dl-layer-title">经典机器学习</text>
+          <text x="80" y="206" class="dl-sub">逻辑回归 · 决策树 · 随机森林 · 梯度提升 · SVM…</text>
+          <text x="640" y="196" class="dl-layer-flag dl-flag-train">平台可训练</text>
+        </g>
+        <text x="360" y="242" class="dl-svg-note dl-mid">从下往上：越来越强，也越来越吃数据和算力</text>
+      </svg>
+      <figcaption>绿色是你能亲手训练的，橙色是平台帮你「借用」或展示的。你已经走完了下面两层。</figcaption>
+    </figure>
+
+    <div class="learn-callout">
+      <p><b>想继续往上走，推荐的路线：</b></p>
+      <ol class="learn-path">
+        <li><b>把平台玩透</b>：每个任务都做一遍，认真做完第 1 节末尾的几个对比实验，养成「先看数据再调模型」的习惯。</li>
+        <li><b>学一点 Python + scikit-learn</b>：把你在平台上点的按钮，亲手用几行代码写出来——平台导出包里的 <code>train.py</code> 就是很好的起点。</li>
+        <li><b>入门 PyTorch</b>：真正从零搭一个小神经网络，训练一次，感受「深度学习」。</li>
+        <li><b>做一个完整项目</b>：找一个你真正关心的问题，从收集数据到训练模型走一遍——这才是最好的学习。</li>
+      </ol>
+    </div>
+
+    <div class="learn-footer-links">
+      <a class="btn-secondary" href="/">← 回到工作台开始练习</a>
+      <button class="btn-secondary" type="button" id="open-glossary">不懂的词？查术语表</button>
+    </div>
+  </section>
+
+  <script>
+    // 复用全局新手教程抽屉，直接跳到第 4 章「核心概念速查」
+    document.getElementById("open-glossary")?.addEventListener("click", () => {
+      document.getElementById("tutorial-open")?.click();
+      setTimeout(() => {
+        document.querySelector('.tutorial-toc a[href="#tut-ch4"]')?.click();
+      }, 120);
+    });
+  </script>
+{% endblock %}

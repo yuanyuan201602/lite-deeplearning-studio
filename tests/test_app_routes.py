@@ -49,17 +49,18 @@ def create_project(client: TestClient, competition: str, task: str, name: str) -
     return response.headers["location"].rsplit("/", 1)[-1]
 
 
-def test_homepage_shows_competitions_and_school(tmp_path: Path) -> None:
+def test_homepage_shows_school_and_hides_competition(tmp_path: Path) -> None:
     response = make_client(tmp_path).get("/")
 
     assert response.status_code == 200
-    assert "智能博物" in response.text
-    assert "优创未来" in response.text
     assert "南昌市第二十三中学" in response.text
     assert "logo.svg" in response.text
+    # 竞赛专区已从首页隐藏，待通用教育模块成熟后在独立竞赛页重新启用
+    assert "/competition/smart_museum" not in response.text
+    assert "/competition/future_creator" not in response.text
 
 
-def test_homepage_shows_general_tasks_and_competition_entries(tmp_path: Path) -> None:
+def test_homepage_shows_general_tasks_and_learn_entry(tmp_path: Path) -> None:
     response = make_client(tmp_path).get("/")
 
     assert "机器学习任务" in response.text
@@ -67,8 +68,9 @@ def test_homepage_shows_general_tasks_and_competition_entries(tmp_path: Path) ->
     assert "文本分类" in response.text
     assert "智能问答" in response.text
     assert "传感器决策" in response.text
-    assert "/competition/smart_museum" in response.text
-    assert "/competition/future_creator" in response.text
+    # 竞赛入口已隐藏；新增「深度学习地图」进阶入口
+    assert "/competition/smart_museum" not in response.text
+    assert "/learn/deep-learning" in response.text
 
 
 def test_competition_page_lists_competition_tasks(tmp_path: Path) -> None:
@@ -154,6 +156,28 @@ def test_workflow_page_shows_create_form(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert "挑战三：非遗文化分类学览" in response.text
     assert "创建项目" in response.text
+
+
+def test_deep_learning_page_renders(tmp_path: Path) -> None:
+    response = make_client(tmp_path).get("/learn/deep-learning")
+
+    assert response.status_code == 200
+    assert "深度学习地图" in response.text
+    assert "神经网络" in response.text
+    assert "迁移学习" in response.text
+
+
+def test_general_task_pages_show_education_content(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+
+    intro = client.get("/workflow/general_ml/general_image_classifier")
+    assert "生活中的例子" in intro.text
+
+    project_id = create_project(client, "general_ml", "general_image_classifier", "图像练习")
+    project = client.get(f"/project/{project_id}")
+    assert "动手做几个小实验" in project.text
+    assert "常见误区" in project.text
+    assert "下一步探索" in project.text
 
 
 def test_create_project_redirects_to_project_page(tmp_path: Path) -> None:

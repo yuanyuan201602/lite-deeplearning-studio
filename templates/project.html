@@ -66,6 +66,17 @@
     <div class="train-log" id="train-log" hidden></div>
     <div id="compare-result"></div>
     <div id="train-report"></div>
+    {% if task.hands_on_experiments %}
+      <details class="edu-block">
+        <summary><span class="edu-mark">✦</span>动手做几个小实验</summary>
+        <p class="edu-intro">一次只改一个地方，看结果怎么变——这样你才知道是什么起了作用。</p>
+        <ul class="edu-list">
+          {% for experiment in task.hands_on_experiments %}
+            <li>{{ experiment }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+    {% endif %}
   </section>
 
   <section class="panel" id="panel-2" hidden>
@@ -81,6 +92,16 @@
     </div>
     <div id="test-area"></div>
     <div id="test-result"></div>
+    {% if task.common_mistakes %}
+      <details class="edu-block edu-block-warn">
+        <summary><span class="edu-mark">⚠</span>常见误区</summary>
+        <ul class="edu-list">
+          {% for mistake in task.common_mistakes %}
+            <li>{{ mistake }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+    {% endif %}
   </section>
 
   <section class="panel" id="panel-3" hidden>
@@ -103,6 +124,12 @@
       <span class="status-text" id="export-status"></span>
     </div>
     <div id="export-result"></div>
+    {% if task.next_steps %}
+      <div class="edu-next">
+        <p class="edu-next-head"><span class="edu-mark">✻</span>下一步探索</p>
+        <p>{{ task.next_steps }}</p>
+      </div>
+    {% endif %}
   </section>
 
   <script id="initial-state" type="application/json">{{ initial_state_json | safe }}</script>

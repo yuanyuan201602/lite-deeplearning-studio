@@ -22,7 +22,8 @@ from typing import Any, Callable
 import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import StratifiedKFold, cross_val_predict, cross_val_score
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -389,6 +390,42 @@ def cross_val_accuracy(
         cv=StratifiedKFold(n_splits=folds, shuffle=True, random_state=7),
     )
     return float(np.mean(scores))
+
+
+def confusion_data(
+    build_model: Callable[[], Any],
+    features: list,
+    labels: list[str],
+    counts: dict[str, int],
+    max_labels: int = 12,
+) -> dict[str, Any] | None:
+    """Confusion matrix for the teaching "which classes get mixed up" view.
+
+    Predictions come from cross-validation when every class has enough samples, so
+    the matrix reflects held-out behaviour instead of memorized training labels; on
+    tiny datasets it falls back to in-sample predictions (flagged via ``basis``).
+    Returns ``None`` when there are too many classes to render a readable grid.
+    """
+    ordered = sorted(counts)
+    if len(ordered) < 2 or len(ordered) > max_labels:
+        return None
+    min_count = min(counts.values())
+    model = build_model()
+    if min_count >= CROSS_VAL_MIN_PER_CLASS:
+        folds = min(3, min_count)
+        predictions = cross_val_predict(
+            model,
+            features,
+            labels,
+            cv=StratifiedKFold(n_splits=folds, shuffle=True, random_state=7),
+        )
+        basis = "cross_val"
+    else:
+        model.fit(features, labels)
+        predictions = model.predict(features)
+        basis = "train"
+    matrix = confusion_matrix(labels, predictions, labels=ordered).tolist()
+    return {"labels": ordered, "matrix": matrix, "basis": basis}
 
 
 def subsample_labeled(labeled: dict[str, list], cap: int = COMPARE_MAX_SAMPLES) -> dict[str, list]:

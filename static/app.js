@@ -1122,12 +1122,25 @@ function renderCompareTable(rows) {
     table.appendChild(tr);
   }
   card.appendChild(table);
+  const fastest = rows.reduce((acc, row) => (row.train_ms < acc.train_ms ? row : acc));
+  const interp = el("p", "compare-interp");
+  let txt = `在这份数据上，「${best.name}」`;
+  txt +=
+    best.cross_val_accuracy !== null && best.cross_val_accuracy !== undefined
+      ? `交叉验证最高（${percent(best.cross_val_accuracy)}），最稳妥。`
+      : "训练准确率领先。";
+  if (fastest !== best) {
+    txt += `「${fastest.name}」训练最快（${fastest.train_ms} 毫秒），数据量大、需要反复试验时它更省时间。`;
+  }
+  txt += "没有哪个算法永远最好——选哪个，看你更在意准确率还是速度。";
+  interp.textContent = txt;
+  card.appendChild(interp);
   const note = el("p", "report-classes");
   note.textContent =
     "★ 是交叉验证最高的模型。交叉验证比训练准确率更接近真实水平；" +
-    "如果某个模型训练准确率很高但交叉验证低很多，说明它在“死记硬背”（过拟合）。" +
-    "每类数据满 3 条才能算交叉验证。" +
-    "对比是快速比拼，数据较多时会随机取部分样本以保证速度；正式训练你选中的模型时仍用全部数据。";
+    "如果某个模型训练准确率很高但交叉验证低很多，说明它在「死记硬背」（过拟合）。" +
+    "每类数据满 3 条，才会计算交叉验证分数。" +
+    "对比时为了快，数据多会随机取一部分样本来比；等你正式训练选中的模型，仍然会用上全部数据。";
   card.appendChild(note);
   compareResult.appendChild(card);
 }
@@ -1183,6 +1196,8 @@ function renderTrainReport(report) {
         .join("，");
     card.appendChild(list);
   }
+  const confusionBox = renderConfusion(report.confusion);
+  if (confusionBox) card.appendChild(confusionBox);
   if (report.rules_text) {
     const details = el("details", "rules-details");
     details.appendChild(el("summary", "", "看看模型学到的决策规则"));
@@ -1221,6 +1236,44 @@ function reportFact(name, value) {
   fact.appendChild(el("span", "fact-value", value));
   fact.appendChild(el("span", "fact-name", name));
   return fact;
+}
+
+function renderConfusion(confusion) {
+  if (!confusion || !confusion.labels || confusion.labels.length < 2) return null;
+  const { labels, matrix } = confusion;
+  const wrap = el("div", "confusion-wrap");
+  wrap.appendChild(el("p", "field-label", "混淆矩阵：模型把哪类和哪类搞混了"));
+  const scroll = el("div", "confusion-scroll");
+  const table = el("table", "confusion-table");
+  const head = el("tr");
+  head.appendChild(el("th", "cm-corner", "真实＼判断"));
+  for (const label of labels) head.appendChild(el("th", "", label));
+  table.appendChild(head);
+  matrix.forEach((row, i) => {
+    const tr = el("tr");
+    tr.appendChild(el("th", "cm-rowhead", labels[i]));
+    row.forEach((count, j) => {
+      const td = el("td", "", `${count}`);
+      if (i === j) {
+        if (count > 0) td.classList.add("cm-c-diag");
+      } else if (count > 0) {
+        td.classList.add("cm-c-off");
+      }
+      tr.appendChild(td);
+    });
+    table.appendChild(tr);
+  });
+  scroll.appendChild(table);
+  wrap.appendChild(scroll);
+  const note = el("p", "report-classes");
+  note.textContent =
+    confusion.basis === "cross_val"
+      ? "每一行是一个真实类别，每一列是模型给出的判断；看这一行被判成了哪些类。绿色对角线是判对的，橙色是被搞混的。" +
+        "这里用的是交叉验证结果，更接近模型遇到新数据时的真实表现。"
+      : "每一行是一个真实类别，每一列是模型给出的判断；看这一行被判成了哪些类。绿色对角线是判对的，橙色是被搞混的。" +
+        "数据较少，这里看的是训练集上的表现，仅供参考。";
+  wrap.appendChild(note);
+  return wrap;
 }
 
 /* ---------- testing ---------- */

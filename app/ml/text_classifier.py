@@ -55,6 +55,9 @@ def train(
     cross_val_accuracy = classifiers.cross_val_accuracy(
         lambda: build_pipeline(choice, len(texts)), texts, labels, counts
     )
+    confusion = classifiers.confusion_data(
+        lambda: build_pipeline(choice, len(texts)), texts, labels, counts
+    )
 
     models_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, models_dir / MODEL_FILE)
@@ -65,6 +68,7 @@ def train(
         "class_counts": counts,
         "train_accuracy": train_accuracy,
         "cross_val_accuracy": cross_val_accuracy,
+        "confusion": confusion,
         "model_choice": choice,
         "model_name": classifiers.CLASSIFIER_INFO[choice]["name"],
         "trained_at": now_text(),

@@ -139,6 +139,9 @@ def train(
     cross_val_accuracy = classifiers.cross_val_accuracy(
         lambda: classifiers.make_classifier(choice, len(labels)), features, labels, counts
     )
+    confusion = classifiers.confusion_data(
+        lambda: classifiers.make_classifier(choice, len(labels)), features, labels, counts
+    )
 
     models_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump(
@@ -152,6 +155,7 @@ def train(
         "class_counts": counts,
         "train_accuracy": train_accuracy,
         "cross_val_accuracy": cross_val_accuracy,
+        "confusion": confusion,
         "feature_mode": feature_mode,
         "model_choice": choice,
         "model_name": classifiers.CLASSIFIER_INFO[choice]["name"],

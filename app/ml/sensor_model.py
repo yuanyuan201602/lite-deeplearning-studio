@@ -72,6 +72,9 @@ def train(raw_csv: str, models_dir: Path, model_choice: str | None = None) -> di
     cross_val_accuracy = classifiers.cross_val_accuracy(
         lambda: _make_model(choice, len(labels)), features, labels, counts
     )
+    confusion = classifiers.confusion_data(
+        lambda: _make_model(choice, len(labels)), features, labels, counts
+    )
 
     models_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump({"model": model, "feature_names": feature_names}, models_dir / MODEL_FILE)
@@ -82,6 +85,7 @@ def train(raw_csv: str, models_dir: Path, model_choice: str | None = None) -> di
         "class_counts": counts,
         "train_accuracy": train_accuracy,
         "cross_val_accuracy": cross_val_accuracy,
+        "confusion": confusion,
         "feature_names": feature_names,
         "model_choice": choice,
         "model_name": classifiers.CLASSIFIER_INFO[choice]["name"],

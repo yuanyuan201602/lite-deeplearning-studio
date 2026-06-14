@@ -328,6 +328,19 @@ def test_ocr_checker_finds_typos_and_broadcast(tmp_path: Path) -> None:
     assert clean["label"] == "卡片文字全部正确"
 
 
+def test_train_report_includes_confusion_matrix(tmp_path: Path) -> None:
+    meta = text_classifier.train(TEXT_SAMPLES, tmp_path)
+
+    confusion = meta["confusion"]
+    assert confusion is not None
+    assert set(confusion["labels"]) == {"传统戏剧", "传统技艺"}
+    # One row/column per class; every prediction lands in exactly one cell.
+    assert len(confusion["matrix"]) == 2
+    assert all(len(row) == 2 for row in confusion["matrix"])
+    assert sum(sum(row) for row in confusion["matrix"]) == len(TEXT_SAMPLES)
+    assert confusion["basis"] in {"cross_val", "train"}
+
+
 def test_ocr_checker_handles_length_mismatch(tmp_path: Path) -> None:
     ocr_checker.train("保护为主抢救第一", tmp_path)
 

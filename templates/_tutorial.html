@@ -54,6 +54,24 @@
         和传统编程的区别：传统编程是<strong>人把规则写死</strong>；机器学习是
         <strong>人给例子，电脑自己总结规则</strong>。例子越多、越有代表性，规律就越靠谱。
       </p>
+      <div class="tut-compare">
+        <div class="tut-compare-col">
+          <p class="tut-compare-head">传统编程</p>
+          <pre class="tut-code">如果 颜色发红 而且 形状是圆的：
+    就说这是苹果
+如果 颜色发黄 而且 形状是长的：
+    就说这是香蕉</pre>
+          <p class="tut-compare-note">规则是人一条条写死的。水果种类一多，规则就写不完、也想不全。</p>
+        </div>
+        <div class="tut-compare-col">
+          <p class="tut-compare-head">机器学习</p>
+          <pre class="tut-code">给电脑看很多苹果照片（贴好「苹果」）
+给电脑看很多香蕉照片（贴好「香蕉」）
+电脑自己找规律 → 得到模型
+拿新照片问模型：这是什么？</pre>
+          <p class="tut-compare-note">你只给例子和答案，规则由电脑自己总结——这就是本平台做的事。</p>
+        </div>
+      </div>
     </section>
 
     <section class="tut-chapter" id="tut-ch2">
@@ -86,7 +104,15 @@
         <h4><span class="tut-step-num">4</span>导出材料</h4>
         <p>一键打包成 zip：训练好的模型、你的全部数据、可运行的 Python 程序、硬件部署说明和比赛提交清单。</p>
         <p class="tut-step-meta"><b>对应理论：</b>把模型变成能在别的电脑/硬件上跑的「作品」。
-        <b>注意：</b>在自己电脑上运行包里的 <code>predict.py</code> 能验证模型是否正常——这也是比赛评审的核心环节。</p>
+        <b>注意：</b>在自己电脑上运行包里的 <code>predict.py</code> 能验证模型是否正常——这是一个项目真正完成的标志。</p>
+      </div>
+
+      <div class="tut-callout">
+        <p class="tut-callout-head">✻ 做个会做实验的人</p>
+        <p>模型不理想时，别急着反复点训练。像科学家一样做实验：<strong>一次只改一个地方</strong>，
+        再看结果怎么变，你才能知道是哪个改动起了作用。</p>
+        <p>想知道「是不是数据太少」，就<strong>只</strong>加数据、先别换模型；想比较两个算法，
+        就用<strong>同一份</strong>数据分别训练。每个练习任务页面下面都备了几个这样的小实验，去动手试试。</p>
       </div>
     </section>
 
@@ -126,6 +152,10 @@
         <dt>交叉验证准确率</dt><dd>把数据轮流分成「学的部分」和「考的部分」反复检验得到的准确率，比训练准确率更能反映真实水平。</dd>
         <dt>置信度</dt><dd>模型对这次预测有多大把握，0–100%。越高越「确定」。</dd>
         <dt>过拟合</dt><dd>模型只会「背」训练例子，换个角度/说法就出错。常因例子太少或太相似。</dd>
+        <dt>欠拟合</dt><dd>和过拟合相反：模型太简单、或数据太杂，连训练例子都没学好，准确率一直上不去。</dd>
+        <dt>超参数</dt><dd>训练前由你来定的「设置」，比如用哪个算法、决策树最多分几层。它不是模型学出来的，是你调的。</dd>
+        <dt>迁移学习</dt><dd>借用别人在海量数据上训练好的网络（如 MobileNet）帮你提取特征，自己只训练最后一小步。没有显卡也能用上深度学习。</dd>
+        <dt>混淆矩阵</dt><dd>一张表，显示模型把每个真实类别分别判成了哪些类——能一眼看出「哪两类最容易被搞混」。</dd>
         <dt>训练数据 vs 测试数据</dt><dd>训练数据用来「学」，测试数据用来「考」。考试题不能提前给答案，否则成绩不真实。</dd>
         <dt>传感器输入 vs 动作输出</dt><dd>传感器输入是测到的数值（温度、光线……），动作输出是据此要做的事（开窗、报警……）。</dd>
         <dt>检索式问答 vs 生成式问答</dt><dd>检索式从现成知识库里「找」最匹配的答案；生成式像大模型那样「现写」答案。本平台是检索式。</dd>
@@ -163,6 +193,28 @@
         <li>查标签——确认没有把例子贴错类别。</li>
         <li>让类别更「不像」——如果两类太接近，模型很难分清。</li>
       </ol>
+      <h4 class="tut-subhead">读懂混淆矩阵</h4>
+      <p>训练后，分类任务会给你一张「混淆矩阵」。<b>行是真实答案，列是模型的判断</b>。
+      对角线（左上→右下）上的数字是判对的，对角线之外就是判错、被搞混的。</p>
+      <figure class="tut-figure">
+        <svg viewBox="0 0 320 210" role="img" aria-label="二乘二混淆矩阵示例">
+          <text x="195" y="20" class="cm-axis">模型判断 →</text>
+          <text x="150" y="48" class="cm-lab">猫</text>
+          <text x="245" y="48" class="cm-lab">狗</text>
+          <text x="22" y="98" class="cm-lab">猫</text>
+          <text x="22" y="168" class="cm-lab">狗</text>
+          <text x="40" y="135" class="cm-axis" transform="rotate(-90 40 135)">真实 →</text>
+          <g class="cm-cell cm-diag"><rect x="110" y="62" width="85" height="62" rx="6"/><text x="152" y="99">18</text></g>
+          <g class="cm-cell cm-off"><rect x="203" y="62" width="85" height="62" rx="6"/><text x="245" y="99">2</text></g>
+          <g class="cm-cell cm-off"><rect x="110" y="132" width="85" height="62" rx="6"/><text x="152" y="169">3</text></g>
+          <g class="cm-cell cm-diag"><rect x="203" y="132" width="85" height="62" rx="6"/><text x="245" y="169">17</text></g>
+        </svg>
+        <figcaption>18 只猫、17 只狗判对了；2 只猫被错认成狗、3 只狗被错认成猫。</figcaption>
+      </figure>
+      <p>在实际训练报告里，判对的格子标成<strong>绿色</strong>、判错的标成<strong>橙色</strong>，
+      一眼就能找到被搞混的那两类。哪个对角线外的格子数字偏大，就说明那两类常被搞混——
+      回第 1 步给它们补一些更有区分度的数据。</p>
+
       <p class="tut-note">记住：模型的上限由数据决定。<strong>与其反复点训练，不如回头把数据做好。</strong></p>
     </section>
   </div>

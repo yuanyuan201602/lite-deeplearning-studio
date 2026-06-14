@@ -33,6 +33,18 @@
     </section>
   {% endif %}
 
+  {% if task.real_world_examples %}
+    <section class="examples-card">
+      <h2>生活中的例子</h2>
+      <p class="examples-sub">这种 AI 就在你身边——</p>
+      <ul>
+        {% for example in task.real_world_examples %}
+          <li>{{ example }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
   {% if error %}
     <p class="form-error">{{ error }}</p>
   {% endif %}
