@@ -75,6 +75,15 @@ All 5 GENERAL_TASKS have `concept_intro` (concept card on workflow page) and `st
 
 ## 4. Feature Status
 
+### Done (v0.5.0, 2026-06-13) — education interactivity
+
+- **Before/after training comparison** (`ProjectInfo.train_history` rolling list via `ProjectService._appended_history`; rendered by `renderTrainDelta()` in app.js): each train appends compact metrics; the report shows a two-bar prev-vs-now comparison + what changed (data/model/feature). Prefers cross-val, falls back to train accuracy when either training lacked it.
+- **Word-weight view** (`text_classifier.top_features_per_class` → `train_report["top_features"]`, linear models only; `renderTopFeatures()`): top char n-grams per class shown as chips.
+- **Cumulative test-set sampling** (`updateEvalTally()` in app.js): running correct/total + accuracy on the step-3 eval sampler (E07).
+- **Deep-learning interactive demos** (`static/learn.js`, mounted into `#demo-datasize / #demo-forward / #demo-boundary` on the explainer page): data-volume↔accuracy slider, click-to-forward-propagate network, decision-boundary/overfitting switcher. All use precomputed/synthetic data — no real training.
+- **Python code snippet** on the explainer page ("用 Python 怎么写").
+- This completes `docs/PRD_EDUCATION.md` except video (stage 4) — see the PRD's 实施进度 section.
+
 ### Done (v0.4.0, 2026-06-13) — education module
 
 - **Competition section hidden from homepage** (`templates/index.html`, Jinja-commented): product is focused on the general education path first; competitions return later on a dedicated page. The `/competition/*` routes still work — only the homepage entry is hidden.
@@ -130,7 +139,7 @@ Declared in `TaskDefinition.paused_features` — rendered as code stubs in the e
 
 ```
 app/main.py               App factory (create_app).
-                          ASSET_VERSION = "0.8.0" — bump when changing CSS/JS to bust browser caches.
+                          ASSET_VERSION = "0.9.0" — bump when changing CSS/JS to bust browser caches.
                           HTML route /learn/deep-learning → learn_deep_learning.html (DL explainer, v0.4.0).
                           DATASETS_ROOT = LDS_DATASETS_ROOT env (default datasets/); mounts the datasets
                           router only when the path exists, else dataset import stays disabled.
@@ -393,6 +402,12 @@ docker compose up -d --build
 ---
 
 ## 13. Version History
+
+### v0.5.0 (2026-06-13)
+
+- Education interactivity: train before/after comparison (`train_history`), word-weight chips (`top_features`), cumulative test-set sampling (E07)
+- Deep-learning explainer interactive demos (`static/learn.js`: data-volume slider, forward-prop, decision boundary) + Python code snippet
+- Completes `docs/PRD_EDUCATION.md` except video
 
 ### v0.4.0 (2026-06-13)
 
