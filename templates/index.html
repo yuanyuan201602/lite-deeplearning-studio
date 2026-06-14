@@ -9,7 +9,7 @@
       <h1>{{ app_intro }}</h1>
       <p class="hero-copy">
         四步完成一个 AI 项目：<strong>准备数据 → 训练模型 → 测试效果 → 导出材料</strong>。
-        不用写代码就能训练自己的模型，导出包可直接用于比赛提交和行空板 M10 部署。
+        不用写代码就能训练自己的模型，亲手走完机器学习的每一个环节。
       </p>
     </div>
     <ol class="hero-steps">
@@ -43,6 +43,7 @@
     </div>
   </section>
 
+  {# 竞赛专区暂时隐藏 — 待通用教育模块成熟后在独立竞赛页重新启用
   <section class="workbench-section">
     <div class="section-heading">
       <h2>竞赛专区</h2>
@@ -59,6 +60,7 @@
       {% endfor %}
     </div>
   </section>
+  #}
 
   {% if recent_projects %}
     <section class="workbench-section recent">
