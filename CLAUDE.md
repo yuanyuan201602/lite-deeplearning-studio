@@ -75,6 +75,16 @@ All 5 GENERAL_TASKS have `concept_intro` (concept card on workflow page) and `st
 
 ## 4. Feature Status
 
+### Done (v0.4.0, 2026-06-13) — education module
+
+- **Competition section hidden from homepage** (`templates/index.html`, Jinja-commented): product is focused on the general education path first; competitions return later on a dedicated page. The `/competition/*` routes still work — only the homepage entry is hidden.
+- **Deep-learning explainer page** (`/learn/deep-learning` → `templates/learn_deep_learning.html`): 6 sections of K12 ML/DL theory, all diagrams are inline SVG using the site CSS vars (no chart lib). Reachable from topnav (`base.html`) and a homepage banner.
+- **Per-task education content** (`TaskDefinition.real_world_examples / common_mistakes / hands_on_experiments / next_steps`, filled for all 5 GENERAL_TASKS): rendered on workflow.html (生活中的例子) and project.html (动手实验 on train step, 常见误区 on test step, 下一步探索 on export step).
+- **Confusion matrix** (`classifiers.confusion_data()` → `train_report["confusion"] = {labels, matrix, basis}` for the 4 classifier capabilities; rendered by `renderConfusion()` in app.js): cross-validated predictions when every class has ≥3 samples, else in-sample (`basis`). QA has no confusion matrix.
+- **Model-comparison interpretation**: `renderCompareTable()` adds a Chinese one-liner naming the most reliable + fastest model.
+- **Tutorial expansion** (`_tutorial.html`): traditional-programming-vs-ML pseudo-code, "实验思维" callout, new glossary terms (欠拟合/超参数/迁移学习/混淆矩阵), a "读懂混淆矩阵" 2×2 SVG.
+- Planning doc: `docs/PRD_EDUCATION.md`.
+
 ### Done (v0.3.0, 2026-06-13)
 
 - **Import an organized dataset** (step 1): `app/services/dataset_library.py` scans a teacher-curated tree (`LDS_DATASETS_ROOT`, default `datasets/`, gitignored). Only `01_可直接用于平台主流程/<category>/<dataset>/platform_dataset.json` (fixed depth 2) is scanned; manifests are matched to the project by `ai_capability`. `ProjectService.import_platform_dataset()` copies `train/<label>/` into the project (same storage the manual uploader writes). **Replacement, not append** — re-importing draws a fresh subset and a second dataset never mixes classes with the first. Per-class caps (`轻量100 / 标准300 / 完整None`) keep huge datasets (MNIST ~56k) from making training crawl; under a cap, samples are drawn at random each import. Security: datasets are resolved by scanned `id`, never by a client-supplied path (rejects `../escape`).
@@ -120,7 +130,8 @@ Declared in `TaskDefinition.paused_features` — rendered as code stubs in the e
 
 ```
 app/main.py               App factory (create_app).
-                          ASSET_VERSION = "0.7.0" — bump when changing CSS/JS to bust browser caches.
+                          ASSET_VERSION = "0.8.0" — bump when changing CSS/JS to bust browser caches.
+                          HTML route /learn/deep-learning → learn_deep_learning.html (DL explainer, v0.4.0).
                           DATASETS_ROOT = LDS_DATASETS_ROOT env (default datasets/); mounts the datasets
                           router only when the path exists, else dataset import stays disabled.
                           SCHOOL_NAME, EDITION_LABELS, EDITION_INTROS, HARDWARE_LABELS, STEP_LABELS constants.
@@ -382,6 +393,13 @@ docker compose up -d --build
 ---
 
 ## 13. Version History
+
+### v0.4.0 (2026-06-13)
+
+- Education module: hid homepage competition section; added `/learn/deep-learning` explainer (6 sections, inline-SVG diagrams)
+- Per-task education fields (real_world_examples / common_mistakes / hands_on_experiments / next_steps) on all 5 general tasks
+- Confusion matrix in train_report (cross-validated when possible) + frontend render; model-comparison interpretation line
+- Tutorial expansion (traditional-vs-ML, experiment thinking, new glossary terms, confusion-matrix reading) + `docs/PRD_EDUCATION.md`
 
 ### v0.3.0 (2026-06-13)
 
