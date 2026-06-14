@@ -7,9 +7,12 @@ import random
 import re
 import shutil
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
+from PIL import Image
 
 from app.ml import engine, sensor_model
 from app.ml.base import MLDataError
@@ -151,6 +154,70 @@ class ProjectService:
 
     def remove_image_label(self, info: ProjectInfo, label: str) -> None:
         self._remove_media_label(info, label, engine.IMAGE_LABELS_FILE, engine.IMAGES_DIR)
+
+    # ----- object detection (annotate boxes) -----
+
+    def add_detect_image(self, info: ProjectInfo, filename: str, data: bytes) -> dict[str, Any]:
+        """Store one uploaded image for annotation; return its stored name + size."""
+        suffix = Path(filename).suffix.lower()
+        if suffix not in SAFE_IMAGE_SUFFIXES:
+            raise MLDataError(f"不支持的图片格式：{filename}。请上传 PNG 或 JPG。")
+        if len(data) > MAX_IMAGE_BYTES:
+            raise MLDataError(f"图片太大：{filename}。请使用 8MB 以内的图片。")
+        try:
+            with Image.open(BytesIO(data)) as image:
+                width, height = image.size
+        except Exception as exc:
+            raise MLDataError("这张图片打不开，请换一张 PNG 或 JPG。") from exc
+        folder = self.dataset_dir(info.project_id) / engine.DETECT_IMAGES_DIR
+        folder.mkdir(parents=True, exist_ok=True)
+        stored = f"{uuid4().hex[:12]}{suffix}"
+        (folder / stored).write_bytes(data)
+        self._touch(info)
+        return {"image": stored, "width": width, "height": height}
+
+    def save_detect_annotations(self, info: ProjectInfo, items: list[dict[str, Any]]) -> None:
+        """Persist the full annotation state: [{image, boxes:[{x,y,w,h,label}], width, height}]."""
+        cleaned: list[dict[str, Any]] = []
+        for item in items:
+            image = str(item.get("image", "")).strip()
+            if not image:
+                continue
+            boxes = []
+            for box in item.get("boxes", []):
+                label = str(box.get("label", "")).strip()
+                if not label:
+                    continue
+                boxes.append(
+                    {
+                        "x": int(box["x"]),
+                        "y": int(box["y"]),
+                        "w": int(box["w"]),
+                        "h": int(box["h"]),
+                        "label": label,
+                    }
+                )
+            cleaned.append(
+                {
+                    "image": image,
+                    "boxes": boxes,
+                    "width": int(item.get("width", 0)),
+                    "height": int(item.get("height", 0)),
+                }
+            )
+        path = self.dataset_dir(info.project_id) / engine.DETECT_LABELS_FILE
+        self._atomic_write_text(path, json.dumps(cleaned, ensure_ascii=False, indent=2))
+        self._touch(info)
+
+    def detect_annotations(self, project_id: str) -> list[dict[str, Any]]:
+        return self._read_dataset_json(
+            self.dataset_dir(project_id) / engine.DETECT_LABELS_FILE, []
+        )
+
+    def detect_image_path(self, project_id: str, image: str) -> Path:
+        """Resolve a stored annotation image, guarding against path escapes."""
+        safe = Path(image).name
+        return self.dataset_dir(project_id) / engine.DETECT_IMAGES_DIR / safe
 
     def add_audio_clips(self, info: ProjectInfo, label: str, clips: list[tuple[str, bytes]]) -> int:
         label = label.strip()
@@ -475,6 +542,24 @@ class ProjectService:
                 "kind": "audio",
                 "sample_count": sum(class_counts.values()),
                 "class_counts": class_counts,
+            }
+        if dataset_kind == "detect":
+            items = self._read_dataset_json(dataset_dir / engine.DETECT_LABELS_FILE, [])
+            class_counts = {}
+            box_count = 0
+            for item in items:
+                for box in item.get("boxes", []):
+                    label = str(box.get("label", "")).strip()
+                    if label:
+                        class_counts[label] = class_counts.get(label, 0) + 1
+                        box_count += 1
+            return {
+                "kind": "detect",
+                "sample_count": box_count,
+                "image_count": len(items),
+                "box_count": box_count,
+                "class_counts": class_counts,
+                "items": items,
             }
         return {"kind": dataset_kind, "sample_count": 0}
 

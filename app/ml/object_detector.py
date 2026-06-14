@@ -20,6 +20,12 @@ SCORE_THRESHOLD = 0.5
 MAX_BOXES = 20
 MIN_FACE_SIZE = (40, 40)
 
+# For the trainable lite detector: take many low-objectness SSD boxes as
+# class-agnostic candidate regions (the "where might something be" step).
+PROPOSAL_SCORE_THRESHOLD = 0.10
+MAX_PROPOSALS = 40
+MIN_PROPOSAL_SIZE = 8
+
 # COCO 91-id space used by the TF-origin SSD model (gaps are unused ids).
 COCO_LABELS_ZH = {
     1: "人", 2: "自行车", 3: "汽车", 4: "摩托车", 5: "飞机", 6: "公交车", 7: "火车",
@@ -131,3 +137,33 @@ def _detect_haar(image_bytes: bytes) -> dict[str, Any]:
         "width": width,
         "height": height,
     }
+
+
+def propose_boxes(image_bytes: bytes) -> dict[str, Any]:
+    """Class-agnostic candidate boxes (objectness) from the pretrained SSD.
+
+    The lite detector needs «这里好像有个东西» regardless of COCO class, so we
+    keep every SSD box above a low score. Requires the SSD model (no Haar fallback —
+    faces aren't general proposals)."""
+    session = pretrained.detector_session()
+    if session is None:
+        raise MLDataError(INSTALL_HINT)
+    image = _open_rgb(image_bytes)
+    width, height = image.size
+    batch = np.asarray(image, dtype=np.uint8)[np.newaxis, :]
+    outputs = session.run(None, {session.get_inputs()[0].name: batch})
+    named = {output.name: value for output, value in zip(session.get_outputs(), outputs)}
+    boxes = named["detection_boxes:0"][0]
+    scores = named["detection_scores:0"][0]
+
+    proposals: list[dict[str, Any]] = []
+    for box, score in zip(boxes, scores):
+        if score < PROPOSAL_SCORE_THRESHOLD or len(proposals) >= MAX_PROPOSALS:
+            continue
+        ymin, xmin, ymax, xmax = box
+        x, y = int(xmin * width), int(ymin * height)
+        w, h = int((xmax - xmin) * width), int((ymax - ymin) * height)
+        if w < MIN_PROPOSAL_SIZE or h < MIN_PROPOSAL_SIZE:
+            continue
+        proposals.append({"x": x, "y": y, "w": w, "h": h, "score": round(float(score), 3)})
+    return {"boxes": proposals, "width": width, "height": height}

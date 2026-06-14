@@ -89,13 +89,20 @@ def _open_image(data: bytes) -> Image.Image:
     return image
 
 
-def image_features(data: bytes, feature_mode: str = FEATURE_MODE_PIXEL) -> list[float]:
-    image = _open_image(data)
+def image_features_from_image(
+    image: Image.Image, feature_mode: str = FEATURE_MODE_PIXEL
+) -> list[float]:
+    """Same feature extraction as image_features, but from an already-open PIL
+    image — used by the detector so cropped boxes reuse the identical pipeline."""
     if feature_mode == FEATURE_MODE_EMBEDDING:
         return pretrained.embed_image(image)
     resized = image.convert("RGB").resize(IMAGE_SIZE)
     pixels = np.asarray(resized, dtype=np.float64) / 255.0
     return pixels.flatten().tolist()
+
+
+def image_features(data: bytes, feature_mode: str = FEATURE_MODE_PIXEL) -> list[float]:
+    return image_features_from_image(_open_image(data), feature_mode)
 
 
 def _prepare_features(

@@ -341,6 +341,43 @@ def test_train_report_includes_confusion_matrix(tmp_path: Path) -> None:
     assert confusion["basis"] in {"cross_val", "train"}
 
 
+def _detect_image(color: tuple[int, int, int]) -> bytes:
+    canvas = Image.new("RGB", (200, 200), (255, 255, 255))
+    canvas.paste(Image.new("RGB", (60, 60), color), (70, 70))
+    buffer = BytesIO()
+    canvas.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def test_detect_lite_trains_and_predicts(tmp_path: Path) -> None:
+    from app.ml import detect_lite
+
+    box = {"x": 70, "y": 70, "w": 60, "h": 60}
+    labeled = [
+        {"image_bytes": _detect_image((220, 40, 40)), "boxes": [{**box, "label": "红块"}]},
+        {"image_bytes": _detect_image((30, 40, 210)), "boxes": [{**box, "label": "蓝块"}]},
+        {"image_bytes": _detect_image((220, 40, 40)), "boxes": [{**box, "label": "红块"}]},
+    ]
+
+    meta = detect_lite.train(labeled, tmp_path)
+    assert set(meta["labels"]) == {"红块", "蓝块"}
+    assert meta["box_count"] == 3
+    assert meta["background_count"] > 0
+    assert meta["algorithm"] == "lite"
+
+    result = detect_lite.predict(tmp_path, _detect_image((220, 40, 40)))
+    assert set(result.keys()) == {"boxes", "count", "width", "height"}
+    assert isinstance(result["boxes"], list)
+    assert result["width"] == 200 and result["height"] == 200
+
+
+def test_detect_lite_rejects_empty_annotation(tmp_path: Path) -> None:
+    from app.ml import detect_lite
+
+    with pytest.raises(MLDataError):
+        detect_lite.train([{"image_bytes": _detect_image((10, 10, 10)), "boxes": []}], tmp_path)
+
+
 def test_text_train_reports_top_features(tmp_path: Path) -> None:
     meta = text_classifier.train(TEXT_SAMPLES, tmp_path)
 

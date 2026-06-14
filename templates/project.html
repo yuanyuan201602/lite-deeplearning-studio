@@ -133,5 +133,9 @@
   </section>
 
   <script id="initial-state" type="application/json">{{ initial_state_json | safe }}</script>
-  <script src="{{ url_for('static', path='/app.js') }}?v={{ asset_version }}"></script>
+  {% if task.ai_capability == "object_detector_trainable" %}
+    <script src="{{ url_for('static', path='/detect.js') }}?v={{ asset_version }}"></script>
+  {% else %}
+    <script src="{{ url_for('static', path='/app.js') }}?v={{ asset_version }}"></script>
+  {% endif %}
 {% endblock %}

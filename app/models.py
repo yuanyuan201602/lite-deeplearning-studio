@@ -22,8 +22,9 @@ AiCapability = Literal[
     "audio_classifier",
     "qa_retrieval",
     "sensor_decision_model",
+    "object_detector_trainable",
 ]
-SampleDatasetKind = Literal["text", "ocr", "image", "audio", "qa", "sensor"]
+SampleDatasetKind = Literal["text", "ocr", "image", "audio", "qa", "sensor", "detect"]
 DataOrigin = Literal["sample", "user"]
 VoiceProfile = Literal[
     "dfrobot_tts_broadcast",

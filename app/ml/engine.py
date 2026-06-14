@@ -7,6 +7,7 @@ from typing import Any
 from app.ml import (
     audio_classifier,
     classifiers,
+    detect_lite,
     image_classifier,
     ocr_checker,
     qa_retrieval,
@@ -32,6 +33,8 @@ IMAGE_LABELS_FILE = "image_labels.json"
 IMAGES_DIR = "images"
 AUDIO_LABELS_FILE = "audio_labels.json"
 AUDIO_DIR = "audio"
+DETECT_LABELS_FILE = "detect_labels.json"
+DETECT_IMAGES_DIR = "detect_images"
 
 
 def train_capability(
@@ -59,6 +62,10 @@ def train_capability(
         )
     if capability == "ocr_typo_checker":
         return ocr_checker.train(_load_ocr_correct_text(dataset_dir), models_dir)
+    if capability == "object_detector_trainable":
+        if model_choice and model_choice != "lite":
+            raise MLDataError("YOLO 端到端检测将在下一期接入，先用「轻量检测」体验完整四步吧。")
+        return detect_lite.train(load_labeled_detect(dataset_dir), models_dir, feature_mode)
     raise MLDataError(f"暂不支持这种 AI 能力：{capability}")
 
 
@@ -79,6 +86,8 @@ def compare_capability(
 
 
 def list_model_choices(capability: str) -> list[dict[str, Any]]:
+    if capability == "object_detector_trainable":
+        return [dict(card) for card in detect_lite.ALGORITHM_CARDS]
     modules = {
         "text_classifier": text_classifier,
         "image_classifier": image_classifier,
@@ -119,6 +128,11 @@ def predict_capability(capability: str, models_dir: Path, payload: dict[str, Any
         return sensor_model.predict(models_dir, payload.get("values", {}))
     if capability == "ocr_typo_checker":
         return ocr_checker.predict(models_dir, str(payload.get("text", "")))
+    if capability == "object_detector_trainable":
+        image_bytes = payload.get("image_bytes")
+        if not image_bytes:
+            raise MLDataError("请选择一张要测试的图片。")
+        return detect_lite.predict(models_dir, image_bytes)
     raise MLDataError(f"暂不支持这种 AI 能力：{capability}")
 
 
@@ -152,6 +166,29 @@ def load_labeled_audio(dataset_dir: Path, sample_cap: int | None = None) -> dict
         dataset_dir, AUDIO_LABELS_FILE, AUDIO_DIR,
         "还没有录入声音，请先给每个类别录几段声音。", sample_cap,
     )
+
+
+def load_labeled_detect(dataset_dir: Path) -> list[dict[str, Any]]:
+    labels_path = dataset_dir / DETECT_LABELS_FILE
+    if not labels_path.is_file():
+        raise MLDataError("还没有标注图片，请先上传图片并把目标框出来。")
+    items = json.loads(labels_path.read_text(encoding="utf-8"))
+    loaded: list[dict[str, Any]] = []
+    for item in items:
+        image_path = dataset_dir / DETECT_IMAGES_DIR / item.get("image", "")
+        if not image_path.is_file():
+            continue
+        loaded.append(
+            {
+                "image_bytes": image_path.read_bytes(),
+                "boxes": item.get("boxes", []),
+                "width": item.get("width"),
+                "height": item.get("height"),
+            }
+        )
+    if not loaded:
+        raise MLDataError("还没有标注图片，请先上传图片并把目标框出来。")
+    return loaded
 
 
 def _load_json_list(path: Path) -> list[dict[str, str]]:

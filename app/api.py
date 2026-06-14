@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from app.ml import engine
@@ -56,6 +56,25 @@ class LoadPackPayload(BaseModel):
 class ImportDatasetPayload(BaseModel):
     dataset_id: str = Field(min_length=1, max_length=80)
     cap: str = Field(default="standard", max_length=20)
+
+
+class DetectBox(BaseModel):
+    x: int
+    y: int
+    w: int
+    h: int
+    label: str = Field(default="", max_length=40)
+
+
+class DetectItem(BaseModel):
+    image: str = Field(max_length=80)
+    boxes: list[DetectBox] = Field(default_factory=list)
+    width: int = 0
+    height: int = 0
+
+
+class DetectAnnotationsPayload(BaseModel):
+    items: list[DetectItem] = Field(default_factory=list)
 
 
 def create_datasets_router(datasets_root: Path | None) -> APIRouter:
@@ -185,6 +204,34 @@ def create_api_router(
         info, task = load_project(project_id)
         project_service.remove_audio_label(info, payload.label)
         return project_state(info, task)
+
+    @router.post("/{project_id}/data/detect/image")
+    async def upload_detect_image(project_id: str, file: UploadFile = File(...)) -> dict:
+        info, _ = load_project(project_id)
+        data = await file.read()
+        return project_service.add_detect_image(info, file.filename or "image.png", data)
+
+    @router.post("/{project_id}/data/detect")
+    def save_detect(project_id: str, payload: DetectAnnotationsPayload) -> dict:
+        info, task = load_project(project_id)
+        project_service.save_detect_annotations(
+            info, [item.model_dump() for item in payload.items]
+        )
+        return project_state(info, task)
+
+    @router.get("/{project_id}/detect/image/{name}")
+    def detect_image(project_id: str, name: str) -> FileResponse:
+        load_project(project_id)
+        path = project_service.detect_image_path(project_id, name)
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail="找不到这张图片")
+        return FileResponse(path)
+
+    @router.post("/{project_id}/predict/detect")
+    async def predict_detect(project_id: str, file: UploadFile = File(...)) -> dict:
+        info, task = load_project(project_id)
+        image_bytes = await file.read()
+        return project_service.predict(info, task.ai_capability, {"image_bytes": image_bytes})
 
     @router.post("/{project_id}/train")
     def train(project_id: str, payload: TrainPayload | None = None) -> dict:
