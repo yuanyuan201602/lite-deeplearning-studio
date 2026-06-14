@@ -75,6 +75,15 @@ All 5 GENERAL_TASKS have `concept_intro` (concept card on workflow page) and `st
 
 ## 4. Feature Status
 
+### Done (v0.6.0, 2026-06-13) — object detection (phase 1)
+
+- **Trainable detection task** (`ai_capability="object_detector_trainable"`, `sample_dataset_kind="detect"`): a 4-step detection flow with its own front-end (`static/detect.js`, loaded instead of app.js by capability in project.html).
+- **Algorithm A · lite detector** (`app/ml/detect_lite.py`): classic-R-CNN-style — `object_detector.propose_boxes()` gives class-agnostic SSD candidate boxes; train crops each labeled box → `image_classifier.image_features_from_image()` (MobileNet/pixel) → LogisticRegression + a 背景 negative class; predict = propose → crop → classify → drop 背景/low-score → NMS. Reuses the image pipeline, runs on CPU in seconds, zero new deps.
+- **Annotation tool** (`detect.js`): canvas draw/delete boxes + per-box label + multi-image nav. Storage: `dataset/detect_images/<uuid>` + `dataset/detect_labels.json` (`[{image, boxes:[{x,y,w,h,label}], width, height}]`); served via `GET /api/projects/{id}/detect/image/{name}`.
+- **Algorithm cards** (`detect_lite.ALGORITHM_CARDS` via `engine.list_model_choices`): lite (trainable) + YOLO (locked, "下一期"); detection does **no** compare race — the cards just explain the R-CNN↔YOLO difference.
+- API: `POST data/detect/image` (upload), `POST data/detect` (save annotations), `POST predict/detect`, `GET detect/image/{name}`.
+- Phase 1 = skeleton + annotation + algorithm A. Phase 2 = YOLO (`.[detect]`) + detection export; phase 3 = COCO import. See `docs/PRD_OBJECT_DETECTION.md`.
+
 ### Done (v0.5.0, 2026-06-13) — education interactivity
 
 - **Before/after training comparison** (`ProjectInfo.train_history` rolling list via `ProjectService._appended_history`; rendered by `renderTrainDelta()` in app.js): each train appends compact metrics; the report shows a two-bar prev-vs-now comparison + what changed (data/model/feature). Prefers cross-val, falls back to train accuracy when either training lacked it.
@@ -139,7 +148,7 @@ Declared in `TaskDefinition.paused_features` — rendered as code stubs in the e
 
 ```
 app/main.py               App factory (create_app).
-                          ASSET_VERSION = "0.9.0" — bump when changing CSS/JS to bust browser caches.
+                          ASSET_VERSION = "0.10.0" — bump when changing CSS/JS to bust browser caches.
                           HTML route /learn/deep-learning → learn_deep_learning.html (DL explainer, v0.4.0).
                           DATASETS_ROOT = LDS_DATASETS_ROOT env (default datasets/); mounts the datasets
                           router only when the path exists, else dataset import stays disabled.
@@ -402,6 +411,12 @@ docker compose up -d --build
 ---
 
 ## 13. Version History
+
+### v0.6.0 (2026-06-13)
+
+- Object detection phase 1: trainable detection task + canvas annotation tool (`static/detect.js`)
+- Algorithm A (lite): R-CNN-style propose (SSD) + crop-classify (MobileNet feature + LogisticRegression + 背景 class) + NMS; reuses image pipeline, CPU/seconds
+- Algorithm cards (lite trainable + YOLO locked); detection backend (`detect_lite.py`, `object_detector.propose_boxes`), storage + API. See `docs/PRD_OBJECT_DETECTION.md`
 
 ### v0.5.0 (2026-06-13)
 
