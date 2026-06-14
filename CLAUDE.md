@@ -4,6 +4,23 @@ This file is the authoritative guide for Claude Code working in this repository.
 
 ---
 
+## 0. Current Status & Next Steps (read this first)
+
+> **当前版本 v0.6.1（2026-06-14，已打 tag + GitHub Release）。** `python -m pytest -q` → 120 passed，ruff clean。
+
+**已完成**：6 个可训练 ML 能力（文本/图像/语音分类、问答检索、传感器决策、OCR 查错）+ 整理数据集导入 + 算法卡片全集 + 完整教育模块（深度学习地图页、混淆矩阵、训练「和上次相比」、词权重、交互演示、Python 代码片段）+ **目标检测一期**（画框标注工具 + 轻量检测 / R-CNN 简化版）。
+
+**活跃前沿 / 下一步（按优先级）**：
+1. **目标检测二期** — 算法 B「YOLO 端到端」（YOLOv8n 微调，隔离在 `.[detect]` 可选依赖 + 分钟级训练的进度 UX）；两个算法都接**检测导出包**（目前检测第 4 步是占位「下一期上线」）。
+2. **目标检测三期** — COCO 导入器（解锁外部 6 个检测数据集）+ 标注工具打磨（移动/缩放/快捷键）。
+3. 其余：人肉测试修 bug、数据集继续扩充、`static/logo.svg` 等正式校徽替换。
+
+**三份 PRD（都在 `docs/`）**：`PRD_OBJECT_DETECTION.md`（一期已实现，二/三期待做）、`PRD_EDUCATION.md`（除视频外已全部实现）、`PRD_LIGHTWEIGHT_WORKFLOW.md`（最初的产品方案）。
+
+**产品方向决策**：通用教育与竞赛**分开做**——先把通用教育/能力做透，竞赛日后作为「通用能力的竞赛向整合」放到独立页面。首页竞赛专区已隐藏（`/competition/*` 路由仍在）。
+
+---
+
 ## 1. What This Project Is
 
 **Lite DeepLearning Studio** is a K12 in-browser machine-learning workbench used at 南昌市第二十三中学 for AI competition preparation. Students complete an end-to-end AI project in four sequential browser steps without installing anything:
@@ -48,8 +65,11 @@ Two competition flavors ship from one codebase. Controlled by `LDS_EDITION` env 
 | `general_audio_classifier` | 语音分类 | `audio_classifier` | `audio` |
 | `general_qa_retrieval` | 智能问答 | `qa_retrieval` | `qa` |
 | `general_sensor_decision` | 传感器决策 | `sensor_decision_model` | `sensor` |
+| `general_object_detector` | 目标检测 | `object_detector_trainable` | `detect` |
 
-All 5 GENERAL_TASKS have `concept_intro` (concept card on workflow page) and `step_guides[4]` (collapsible blocks in each step panel) filled in, added in v0.2.0.
+All GENERAL_TASKS have `concept_intro` + `step_guides[4]` plus the v0.4.0 education fields
+(`real_world_examples / common_mistakes / hands_on_experiments / next_steps`). The detection task
+(`general_object_detector`, added v0.6.0) uses its own front-end `static/detect.js` instead of app.js.
 
 ### SMART_MUSEUM_TASKS
 
@@ -140,7 +160,8 @@ Declared in `TaskDefinition.paused_features` — rendered as code stubs in the e
 - `static/logo.svg` is a placeholder — replace with the real school badge when available.
 - Mobile layout untested; designed for teacher-projected or student laptop use.
 - Photo OCR (`.[ocr]` extra, EasyOCR) only runs in the exported `run.py`; in-browser step 2 uses a text-diff checker, not real OCR.
-- Roadmap per last conversation: 人肉测试 → 数据集扩充 → 平台内教学过程，bug 修复优先.
+- **Detection export not done yet** (phase 2): the detection task's step-4 panel is a "下一期上线" placeholder; no detection material zip yet.
+- See Section 0 for the active roadmap (detection phase 2/3).
 
 ---
 
@@ -148,7 +169,7 @@ Declared in `TaskDefinition.paused_features` — rendered as code stubs in the e
 
 ```
 app/main.py               App factory (create_app).
-                          ASSET_VERSION = "0.10.0" — bump when changing CSS/JS to bust browser caches.
+                          ASSET_VERSION = "0.11.0" — bump when changing CSS/JS to bust browser caches.
                           HTML route /learn/deep-learning → learn_deep_learning.html (DL explainer, v0.4.0).
                           DATASETS_ROOT = LDS_DATASETS_ROOT env (default datasets/); mounts the datasets
                           router only when the path exists, else dataset import stays disabled.
@@ -171,7 +192,8 @@ app/task_catalog.py       Static task catalog. list_competitions(edition) / get_
                           GENERAL_ML bypasses edition filter everywhere.
 app/ml/
   engine.py               Dispatches train/predict/list_model_choices/list_feature_modes/compare by
-                          ai_capability string.
+                          ai_capability string. object_detector_trainable → detect_lite (model_choice
+                          lite/yolo; yolo rejected for now = phase 2). load_labeled_detect() reads boxes.
   base.py                 MLDataError, MODEL_FILE ("model.joblib"), MODEL_META_FILE ("model_meta.json").
   classifiers.py          Multi-model registry: trainable CPU estimators (*_CHOICES — incl. GBDT/MLP/SVM)
                           vs display-only deep-learning cards (*_DISPLAY/DISPLAY_INFO, never trained).
@@ -185,7 +207,15 @@ app/ml/
   sensor_model.py         CSV (header-driven, last col = label) → decision tree.
   ocr_checker.py          In-browser: text diff only. Export run.py uses EasyOCR.
   pretrained.py           ONNX model loader (models_pretrained/, gitignored ~40 MB).
-  object_detector.py      SSD demo for /playground/detect; cv2-optional, degrades gracefully.
+                          embed_image(pil)/image_embedder + detector_session (SSD). image_classifier
+                          and detect_lite share embed_image for features.
+  object_detector.py      SSD/Haar inference for /playground/detect; cv2-optional. propose_boxes() gives
+                          class-agnostic SSD candidate boxes for the trainable lite detector (v0.6.0).
+  detect_lite.py          Object detection algorithm A — R-CNN simplified (v0.6.0). Train: crop labeled
+                          boxes → image_classifier.image_features_from_image() (MobileNet/pixel) →
+                          LogisticRegression + 背景 negatives. Predict: propose → crop → classify →
+                          drop 背景/low-score → NMS. ALGORITHM_CARDS (lite trainable + YOLO locked)
+                          feed engine.list_model_choices; detection has NO compare race.
 app/services/
   dataset_library.py      Read-only scan of the LDS_DATASETS_ROOT tree (v0.3.0). Lists / resolves curated
                           datasets by manifest id for the step-1 import dropdown; never writes.
@@ -194,6 +224,9 @@ app/services/
                           partial reads from concurrent requests.
                           import_platform_dataset() copies train/ in (replacement semantics + per-class
                           caps) and test/ → dataset_eval/; sample_eval_predict() drives step-3 sampling.
+                          Detection (v0.6.0): add_detect_image / save_detect_annotations / detect_annotations
+                          store dataset/detect_images/<uuid> + dataset/detect_labels.json.
+                          train() appends ProjectInfo.train_history (before/after compare, v0.5.0).
   template_service.py     Renders export package via Jinja2 string templates. Includes:
                           train.py, predict.py, run.py, ai_runtime/core.py (predict_raw()),
                           run_on_unihiker.py (per-capability with on_result() "创意区域" hook),
@@ -209,12 +242,15 @@ templates/
   workflow.html           Project creation form. Shows task title/summary/requirements,
                           renders concept_intro card if task.concept_intro is set,
                           hardware selector, project name input.
-  project.html            4-step workflow page. Bootstraps initial_state_json into app.js.
+  project.html            4-step workflow page. Bootstraps initial_state_json. Loads app.js — OR detect.js
+                          when ai_capability == object_detector_trainable (conditional <script>).
                           Each step panel conditionally renders step_guides[i] as a <details> block.
                           Step 4 export panel: two fixed buttons (export + download), status text.
   competition.html        Competition overview page: task list + existing project cards.
   collect.html            Data collection assistant (camera capture per class label).
   playground_detect.html  Object detection demo page (needs .[vision]).
+  learn_deep_learning.html  Deep-learning explainer (/learn/deep-learning, v0.4.0): 6 sections, inline SVG;
+                          loads learn.js for the interactive demos.
   _tutorial.html          Tutorial sidebar: scrim + aside drawer with 6-chapter content + TOC.
   error.html              Generic 404/error page.
 static/
@@ -226,8 +262,15 @@ static/
                           - Export: activates #download-button href + removes is-disabled class.
   tutorial.js             Tutorial drawer open/close/scrim/Esc + TOC anchor scrolling within drawer.
   collect.js              Data collection page: camera capture, image/audio upload per label.
+  detect.js               Object detection project page (v0.6.0): canvas box-annotation tool, algorithm
+                          cards, train, test-with-boxes. Self-contained 4-step controller (own stepper),
+                          loaded instead of app.js for the detection task.
+  learn.js                Deep-learning explainer interactive demos (v0.5.0): data-volume slider,
+                          forward-prop network, decision-boundary switcher. Precomputed data, no training.
   styles.css              All CSS. CSS custom properties: --surface-warm, --line, --muted, --radius-sm.
                           Includes .step-locked, .teach-block, .tutorial-drawer, .btn-download.is-disabled.
+                          NOTE: SVG text-anchor in diagrams needs !important to beat the
+                          `.learn-figure svg text { text-anchor: middle }` default (specificity, v0.6.1).
   logo.svg                School badge placeholder.
 data_packs/
   index.json              List of available sample packs with metadata.
@@ -242,7 +285,7 @@ data_packs/
 Each project lives under `workspace/projects/<project_id>/`:
 
 ```
-metadata.json             ProjectInfo (name, task, train_report, export_file, timestamps)
+metadata.json             ProjectInfo (name, task, train_report, train_history[], export_file, timestamps)
 dataset/
   text_samples.json       [{text, label}, ...]
   qa_pairs.json           [{question, answer}, ...]
@@ -252,6 +295,8 @@ dataset/
   audio/<label>/          WAV files per audio class
   image_labels.json       [label, ...]  ordered label list
   audio_labels.json       [label, ...]  ordered label list
+  detect_images/<uuid>    uploaded images for box annotation (object detection, v0.6.0)
+  detect_labels.json      [{image, boxes:[{x,y,w,h,label}], width, height}]
 dataset_eval/             Held-out test split from an imported dataset (v0.3.0). NOT trained, NOT exported.
   manifest.json           {kind, items: [{label, file|text}]}
   media/                  copied test images/audio (text items inline in manifest)
@@ -289,7 +334,11 @@ logs/                     Reserved
 | POST | `predict` | `{text, values}` for text/sensor |
 | POST | `predict/image` | Multipart image upload |
 | POST | `predict/audio` | Multipart WAV upload |
-| POST | `export` | Build zip; **400 if train_report is None** |
+| POST | `data/detect/image` | Multipart image → `{image, width, height}` (detection, v0.6.0) |
+| POST | `data/detect` | `{items:[{image, boxes, width, height}]}` — save annotations |
+| GET | `detect/image/{name}` | Serve a stored annotation image |
+| POST | `predict/detect` | Multipart image → `{boxes:[{x,y,w,h,label,score}], count, width, height}` |
+| POST | `export` | Build zip; **400 if train_report is None** (detection export = phase 2) |
 
 ### Other routes
 
@@ -339,6 +388,7 @@ The exported `ai_runtime/core.py` must load and run the model trained in-app. **
 | `sensor_decision_model` | `{model, feature_names}` | CSV header-driven; last column = action label. |
 | `text_classifier` | `{model}` | TF-IDF + sklearn pipeline. |
 | `ocr_typo_checker` | none | In-browser: text diff. Export: EasyOCR in `run.py` (needs `.[ocr]`). |
+| `object_detector_trainable` | `{model, feature_mode, classes}` | lite (R-CNN simplified, v0.6.0): SSD `propose_boxes` → crop → MobileNet/pixel feature → LogisticRegression (+背景 class) → NMS. **No export template yet (phase 2)**; must mirror crop+feature+propose+NMS when added. |
 
 On export, `model.joblib` → `models/<capability>.joblib` in package. Image packages also bundle `models/pretrained/mobilenet_v2.onnx`.
 
@@ -411,6 +461,11 @@ docker compose up -d --build
 ---
 
 ## 13. Version History
+
+### v0.6.1 (2026-06-14)
+
+- Fix: deep-learning SVG diagram text anchors (left/right labels rendered centered → section-1 labels clipped, section-6 tech-map misaligned) — `text-anchor` needed `!important` to beat the blanket rule
+- Tagged release `v0.6.1` consolidating the 2026-06-13~14 work (v0.3.0 → v0.6.1)
 
 ### v0.6.0 (2026-06-13)
 
