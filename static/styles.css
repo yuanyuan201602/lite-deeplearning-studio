@@ -2175,13 +2175,14 @@ body.tutorial-locked {
   font-size: 12px;
   font-weight: 600;
   fill: var(--accent-strong);
-  text-anchor: start;
+  /* !important: beat the higher-specificity `.learn-figure svg text` default */
+  text-anchor: start !important;
 }
 
 .dl-svg-tag.dl-mid,
 .dl-svg-note.dl-mid,
 .dl-sub.dl-mid {
-  text-anchor: middle;
+  text-anchor: middle !important;
 }
 
 .dl-box rect {
@@ -2302,17 +2303,17 @@ body.tutorial-locked {
 .dl-layer-title {
   font-weight: 700;
   fill: var(--text);
-  text-anchor: start;
+  text-anchor: start !important;
 }
 
 .dl-layer .dl-sub {
-  text-anchor: start;
+  text-anchor: start !important;
 }
 
 .dl-layer-flag {
   font-size: 11px;
   font-weight: 700;
-  text-anchor: end;
+  text-anchor: end !important;
 }
 
 .dl-flag-train {
