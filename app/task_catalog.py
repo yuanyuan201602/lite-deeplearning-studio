@@ -792,6 +792,220 @@ GENERAL_ML = CompetitionDefinition(
     tasks=GENERAL_TASKS,
 )
 
+
+# 应用案例（学以致用）：在「按技术分类」之上加一层「按真实场景分类」。
+# 每个案例 = 现有 ai_capability + 贴合场景的样本包 + 应用叙事，复用现有四步与引擎，
+# 不新增任何能力。首批三案例都挂 data_packs/ 里现成的样本包（bundled_dataset_id），
+# 学生在第 1 步点「加载样本数据包」即可一键导入（样本包已按 capability 过滤）。
+APPLICATION_CASES = [
+    TaskDefinition(
+        slug="case_spam_filter",
+        title="垃圾短信拦截",
+        summary="用真实的正常/骚扰短信，训练一个能自动认出垃圾短信的文本分类器。",
+        student_goal="把「文本分类」用到一个真实场景：让手机自动拦下骚扰短信。",
+        group="应用案例",
+        requirement_source="应用案例 · 学以致用",
+        competition_requirements=[
+            "导入「垃圾信息识别」样本包，或自己粘贴正常/垃圾短信",
+            "训练文本分类模型并查看准确率",
+            "输入一条新短信，看模型判断是正常还是垃圾",
+            "导出材料包并在电脑上运行验证",
+        ],
+        ai_capability="text_classifier",
+        sample_dataset_kind="text",
+        runtime_requirements=["scikit-learn", "joblib", "numpy"],
+        voice_profile="none",
+        paused_features=[],
+        suggested_hardware=["student_laptop"],
+        required_outputs=STANDARD_OUTPUTS,
+        starter_steps=[
+            "加载「垃圾信息识别」样本包",
+            "看看正常短信和垃圾短信各长什么样",
+            "点击训练",
+            "输入一条新短信测试",
+            "导出材料包",
+        ],
+        case_scenario="让手机自动认出骚扰短信，帮你拦下来。",
+        bundled_dataset_id="general_text_spam",
+        case_domain="生活",
+        concept_intro=(
+            "每天都有骚扰广告、诈骗短信塞进手机，手机管家会自动把它们拦进垃圾箱——"
+            "这背后就是一个文本分类模型在工作。它不真正「读懂」短信，"
+            "而是统计「免费」「中奖」「点击链接」这类词在垃圾短信里出现得多不多，"
+            "来判断一条新短信是正常还是垃圾。这正是文本分类最经典、最实用的落地场景。"
+        ),
+        step_guides=[
+            "点「加载样本数据包」导入「垃圾信息识别」，里面已经分好「正常」和「垃圾」两类短信。"
+            "你也可以再粘贴几条自己收到过的骚扰短信，让模型见过的样子更多。",
+            "点训练。模型会统计哪些词在垃圾短信里更常出现（如「免费」「中奖」「链接」），"
+            "形成判断依据。准确率太低通常说明两类短信收集得还不够多、不够典型。",
+            "输入一条新短信测试，看模型判断正常还是垃圾、置信度多高。"
+            "故意输入一条「伪装得很像正常」的广告，看模型会不会被骗到。",
+            "导出的 predict.py 可以直接接收一条短信文字、输出「正常 / 垃圾」，"
+            "把它接到拦截程序里，就是一个最小可用的短信过滤器。",
+        ],
+        real_world_examples=[
+            "手机管家、12321 举报平台，每天自动拦下海量诈骗和广告短信。",
+            "邮箱的垃圾邮件过滤——文本分类最早成名的应用，原理一模一样。",
+            "社交平台自动识别违规、刷屏评论并折叠。",
+        ],
+        common_mistakes=[
+            "垃圾短信样本太少、太单一，模型只会拦它见过的那几种套路，换种话术就漏。"
+            "真实的骚扰短信花样很多，样本越丰富越拦得住。",
+            "正常短信里混进了几条其实是广告的，标签标错了，模型学到的依据就乱了。",
+        ],
+        hands_on_experiments=[
+            "伪装实验：写一条「读起来很正常」的广告短信，看模型识不识破，再把它当垃圾样本补进去重训。",
+            "加数据实验：每类从几条加到十几条，看准确率怎么变。",
+            "找混淆：训练后看「混淆矩阵」，是正常被当成垃圾多，还是垃圾漏成正常多？",
+        ],
+        next_steps=(
+            "你做的是「数词」的文本分类——只看哪些词出现得多。"
+            "真正能读懂一句话语气、识破伪装的大模型（如 BERT）是怎么做到的？"
+            "去「深度学习地图」第 4 节看文本技术从词袋到 Transformer 的演进。"
+        ),
+    ),
+    TaskDefinition(
+        slug="case_campus_qa",
+        title="校园问答助手",
+        summary="录入校园生活问答对，做一个学生问一句、自动找到答案的小助手。",
+        student_goal="把「智能问答」用到一个真实场景：校园里的自动问答客服。",
+        group="应用案例",
+        requirement_source="应用案例 · 学以致用",
+        competition_requirements=[
+            "导入「校园生活问答」样本包，或自己录入问答对",
+            "训练后用一个新问题测试",
+            "观察相似度分数和兜底回答",
+            "导出材料包并在电脑上运行验证",
+        ],
+        ai_capability="qa_retrieval",
+        sample_dataset_kind="qa",
+        runtime_requirements=["scikit-learn", "joblib", "numpy"],
+        voice_profile="none",
+        paused_features=[],
+        suggested_hardware=["student_laptop"],
+        required_outputs=STANDARD_OUTPUTS,
+        starter_steps=[
+            "加载「校园生活问答」样本包",
+            "看看一组组问答对长什么样",
+            "点击训练建立检索库",
+            "换种问法问一个新问题测试",
+            "导出材料包",
+        ],
+        case_scenario="学生问一句，机器自动找到最接近的答案。",
+        bundled_dataset_id="general_qa_school",
+        case_domain="校园",
+        concept_intro=(
+            "学校公众号、智能客服总能秒回「图书馆几点关门」「怎么请假」这类常见问题——"
+            "靠的就是检索式问答。它不自己编答案，而是从老师整理好的问答库里，"
+            "找出和你这句话最像的已知问题，把对应答案返回给你。"
+            "答案完全来自知识库、不会乱编，特别适合校园这种「答案要准、不能瞎说」的场景。"
+        ),
+        step_guides=[
+            "点「加载样本数据包」导入「校园生活问答」，里面是一组组「问题 | 答案」。"
+            "同一个答案最好配多种问法（「几点关门」「什么时候闭馆」），助手才更聪明。",
+            "点训练。系统会把每个问题转成数字向量、建立相似度检索库——"
+            "毫秒级完成，普通电脑就行，不需要大模型。",
+            "换一种没录过的问法问同一件事，看相似度分数（0–1）有多高、找没找对答案。"
+            "再问一个知识库里完全没有的问题，看会不会触发兜底回答。",
+            "导出的 predict.py 接收一个问题、返回最匹配的答案和相似度。"
+            "换掉知识库文件就能换内容——可以做成班级值日问答、社团报名问答等。",
+        ],
+        real_world_examples=[
+            "学校公众号自动回复「校历」「作息时间」等高频问题。",
+            "企业、银行的在线客服，先用检索式问答接住大部分常见问题。",
+            "博物馆导览机：游客问「这件文物多少年了」，它从讲解词里找答案。",
+        ],
+        common_mistakes=[
+            "一个答案只配了一种问法，学生换个说法就找不到。多配几种问法是关键。",
+            "知识库太小，稍微偏一点的问题就只能给兜底回答。问答对越全，助手越好用。",
+        ],
+        hands_on_experiments=[
+            "问法实验：先给一个答案只配 1 种问法，换说法测能不能命中；再补到 3 种问法重测。",
+            "兜底实验：故意问一个知识库里完全没有的问题，看相似度有多低、是否触发兜底回答。",
+            "扩库实验：自己加几组班级专属的问答（「值日表在哪」），训练后问问看。",
+        ],
+        next_steps=(
+            "检索式问答是从写好的知识库里「找」答案，可靠、不会乱编。"
+            "生成式问答（像 ChatGPT 那样「现写」答案）和它有什么不同、各自适合什么场景？"
+            "新手教程第 3 章和术语表里有对比讲解。"
+        ),
+    ),
+    TaskDefinition(
+        slug="case_step_counter",
+        title="运动计步",
+        summary="用三轴加速度数据，训练一个判断你在静止、走路还是跑步的模型。",
+        student_goal="把「传感器决策」用到一个真实场景：手环/手机里的运动识别。",
+        group="应用案例",
+        requirement_source="应用案例 · 学以致用",
+        competition_requirements=[
+            "导入「运动状态传感器」样本包，或自己准备加速度 CSV",
+            "训练决策模型并查看规则",
+            "输入一组新读数测试",
+            "导出材料包并在电脑上运行验证",
+        ],
+        ai_capability="sensor_decision_model",
+        sample_dataset_kind="sensor",
+        runtime_requirements=["scikit-learn", "joblib", "numpy"],
+        voice_profile="none",
+        paused_features=[],
+        suggested_hardware=["student_laptop"],
+        required_outputs=STANDARD_OUTPUTS,
+        starter_steps=[
+            "加载「运动状态传感器」样本包",
+            "看看三轴加速度数据长什么样",
+            "点击训练并查看决策规则",
+            "输入一组新读数测试",
+            "导出材料包",
+        ],
+        case_scenario="靠传感器读数，判断你是站着、走着还是在跑。",
+        bundled_dataset_id="general_sensor_motion",
+        case_domain="生活",
+        concept_intro=(
+            "手环、手机里的「今日步数」是怎么算出来的？靠的是加速度传感器——"
+            "静止、走路、跑步时，手腕的加速度数值有明显不同的规律。"
+            "决策树模型从这些数值里学出一套「如果…就…」的判断规则，"
+            "判断你此刻处于哪种运动状态。它最大的好处是规则看得见、读得懂，不是黑箱。"
+        ),
+        step_guides=[
+            "点「加载样本数据包」导入「运动状态传感器」，里面是三轴加速度读数，"
+            "最后一列标着「静止 / 行走 / 跑步」。每种状态都要有足够多的样本行。",
+            "点训练。决策树会找「最佳分叉点」学出规则，比如「某轴抖动幅度大 → 跑步」。"
+            "训练后展开「决策规则」，能直接看到模型学到的 if-else。",
+            "输入一组新的加速度读数，看模型判断哪种状态。"
+            "用介于走路和跑步之间的数值测一测，看边界判断合不合理。",
+            "导出的 predict.py 接收一行传感器读数、输出运动状态。"
+            "在行空板上接真实加速度计，就能做一个会区分动作的迷你计步器。",
+        ],
+        real_world_examples=[
+            "运动手环 / 手机的「今日步数」，先判断动作再计步。",
+            "跌倒检测手表：识别出突然的剧烈加速度，自动呼救。",
+            "游戏手柄、VR 设备靠加速度计感知你的挥动和转身。",
+        ],
+        common_mistakes=[
+            "每种动作只采了几行、还都很相似，模型对没见过的读数判断不稳。每种状态多采些。",
+            "走路和跑步的样本采得太「标准」，真实使用时介于两者之间的读数就分不清了。",
+        ],
+        hands_on_experiments=[
+            "读规则：训练后展开「决策规则」，看模型用哪一轴、什么阈值区分跑步和走路。",
+            "边界实验：用介于走路和跑步之间的读数测试，看模型判得合不合理。",
+            "看重要性：训练后看「各传感器重要程度」，哪一轴对判断运动状态最关键？",
+        ],
+        next_steps=(
+            "决策树的优点是「规则看得见」。数据更复杂时，可以在训练页换「梯度提升」"
+            "等更强的算法（准确率可能更高，但规则变成黑箱）。"
+            "想了解神经网络为什么是「黑箱」，去「深度学习地图」。"
+        ),
+    ),
+]
+
+APPLICATION_CASES_GROUP = CompetitionDefinition(
+    slug="application_cases",
+    title="应用案例",
+    summary="把学过的技术用到真实场景：垃圾短信拦截、校园问答助手、运动计步。",
+    tasks=APPLICATION_CASES,
+)
+
 COMPETITIONS = [
     CompetitionDefinition(
         slug="smart_museum",
@@ -825,9 +1039,11 @@ def get_competition(
     slug: str,
     edition: AppEdition | str | None = "all",
 ) -> CompetitionDefinition | None:
-    # 通用任务组在所有版本都可用，不参与竞赛版本过滤。
+    # 通用任务组与应用案例组在所有版本都可用，不参与竞赛版本过滤。
     if slug == GENERAL_ML.slug:
         return GENERAL_ML
+    if slug == APPLICATION_CASES_GROUP.slug:
+        return APPLICATION_CASES_GROUP
     return next((competition for competition in list_competitions(edition) if competition.slug == slug), None)
 
 

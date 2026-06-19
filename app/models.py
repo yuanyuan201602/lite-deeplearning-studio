@@ -57,6 +57,10 @@ class TaskDefinition(BaseModel):
     common_mistakes: list[str] = Field(default_factory=list)
     hands_on_experiments: list[str] = Field(default_factory=list)
     next_steps: str = ""
+    # Application-case framing (v0.9.0). Empty for ordinary technique tasks.
+    case_scenario: str = ""
+    bundled_dataset_id: str = ""
+    case_domain: str = ""
 
 
 class CompetitionDefinition(BaseModel):

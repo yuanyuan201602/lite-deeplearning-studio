@@ -44,6 +44,24 @@
   </section>
 
   <section class="workbench-section">
+    <div class="section-heading">
+      <h2>应用案例 · 学以致用</h2>
+      <p>把学过的技术用到一个真实场景里，走完整四步——数据现成，几秒就能跑通。</p>
+    </div>
+    <div class="case-grid">
+      {% for case in application_cases %}
+        <a class="skill-card case-card" href="/workflow/application_cases/{{ case.slug }}">
+          <span class="skill-mark">✻</span>
+          <h3>{{ case.title }}</h3>
+          <p>{{ case.case_scenario or case.summary }}</p>
+          <span class="case-tag">用到：{{ capability_labels.get(case.ai_capability, case.ai_capability) }}</span>
+          <span class="task-action">动手试试</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="workbench-section">
     <a class="learn-banner" href="/learn/deep-learning">
       <div>
         <p class="eyebrow">✻ 进阶学习</p>

@@ -3,9 +3,10 @@
 {% block title %}{{ task.title }} · {{ app_title }}{% endblock %}
 
 {% block content %}
+  {% set no_competition_page = competition.slug in ("general_ml", "application_cases") %}
   <nav class="crumbs">
     <a href="/">工作台</a> /
-    {% if competition.slug == "general_ml" %}{{ competition.title }}{% else %}<a href="/competition/{{ competition.slug }}">{{ competition.title }}</a>{% endif %}
+    {% if no_competition_page %}{{ competition.title }}{% else %}<a href="/competition/{{ competition.slug }}">{{ competition.title }}</a>{% endif %}
     / {{ task.title }}
   </nav>
 
@@ -13,11 +14,14 @@
     <div>
       <p class="eyebrow">{{ competition.title }} · {{ task.group }}</p>
       <h1>{{ task.title }}</h1>
+      {% if task.case_scenario %}
+        <p class="intro-scenario">{{ task.case_scenario }}</p>
+      {% endif %}
       <p class="intro-copy">{{ task.summary }}</p>
       <p class="intro-goal">{{ task.student_goal }}</p>
     </div>
     <aside class="req-card">
-      <h2>{% if competition.slug == "general_ml" %}练习目标{% else %}比赛要求（{{ task.requirement_source }}）{% endif %}</h2>
+      <h2>{% if no_competition_page %}练习目标{% else %}比赛要求（{{ task.requirement_source }}）{% endif %}</h2>
       <ul>
         {% for requirement in task.competition_requirements %}
           <li>{{ requirement }}</li>
@@ -30,6 +34,10 @@
     <section class="concept-card">
       <h2>了解原理</h2>
       <p>{{ task.concept_intro }}</p>
+      {% if task.case_scenario %}
+        <p class="concept-tech">本案例用到的技术 → <strong>{{ task.title }}</strong> 背后是机器学习里的一种基础能力，
+        在「机器学习任务」里可以单独练它的原理。</p>
+      {% endif %}
     </section>
   {% endif %}
 

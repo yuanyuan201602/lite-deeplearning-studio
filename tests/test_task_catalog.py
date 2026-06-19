@@ -1,4 +1,7 @@
+from app.models import AiCapability
 from app.task_catalog import get_competition, get_task, list_competitions
+
+EXISTING_CAPABILITIES = set(AiCapability.__args__)
 
 
 def test_catalog_exposes_two_competitions() -> None:
@@ -7,6 +10,45 @@ def test_catalog_exposes_two_competitions() -> None:
     slugs = {competition.slug for competition in competitions}
 
     assert slugs == {"smart_museum", "future_creator"}
+
+
+def test_application_cases_group_is_always_visible() -> None:
+    # Mirrors GENERAL_ML: not in the edition-filtered COMPETITIONS list, but
+    # resolvable in every edition via the get_competition special-case.
+    assert "application_cases" not in {c.slug for c in list_competitions()}
+    for edition in ("all", "smart_museum", "future_creator"):
+        group = get_competition("application_cases", edition)
+        assert group is not None
+        assert len(group.tasks) == 3
+
+
+def test_application_cases_first_batch_reuses_existing_capabilities() -> None:
+    group = get_competition("application_cases")
+    slugs = {task.slug for task in group.tasks}
+    assert slugs == {"case_spam_filter", "case_campus_qa", "case_step_counter"}
+
+    for task in group.tasks:
+        # Zero new ML capabilities: every case rides an existing one.
+        assert task.ai_capability in EXISTING_CAPABILITIES
+        # Application framing fields populated.
+        assert task.case_scenario
+        assert task.bundled_dataset_id
+        assert task.case_domain
+        assert task.group == "应用案例"
+        # Rendering / export fields must be present like GENERAL_TASKS.
+        assert task.concept_intro
+        assert len(task.step_guides) == 4
+        assert task.real_world_examples
+        assert task.next_steps
+        assert "README.md" in task.required_outputs
+
+
+def test_application_case_resolves_via_get_task() -> None:
+    task = get_task("application_cases", "case_spam_filter")
+    assert task is not None
+    assert task.ai_capability == "text_classifier"
+    assert task.bundled_dataset_id == "general_text_spam"
+    assert get_task("application_cases", "missing") is None
 
 
 def test_each_competition_has_student_tasks() -> None:
