@@ -12,6 +12,10 @@ def test_catalog_exposes_two_competitions() -> None:
     assert slugs == {"smart_museum", "future_creator"}
 
 
+# Image/audio cases collect their own data (no bundled pack) → empty bundled_dataset_id.
+SELF_COLLECT_CASES = {"case_garbage_sort", "case_voice_command"}
+
+
 def test_application_cases_group_is_always_visible() -> None:
     # Mirrors GENERAL_ML: not in the edition-filtered COMPETITIONS list, but
     # resolvable in every edition via the get_competition special-case.
@@ -19,22 +23,32 @@ def test_application_cases_group_is_always_visible() -> None:
     for edition in ("all", "smart_museum", "future_creator"):
         group = get_competition("application_cases", edition)
         assert group is not None
-        assert len(group.tasks) == 3
+        assert len(group.tasks) == 5
 
 
-def test_application_cases_first_batch_reuses_existing_capabilities() -> None:
+def test_application_cases_reuse_existing_capabilities() -> None:
     group = get_competition("application_cases")
     slugs = {task.slug for task in group.tasks}
-    assert slugs == {"case_spam_filter", "case_campus_qa", "case_step_counter"}
+    assert slugs == {
+        "case_spam_filter",
+        "case_campus_qa",
+        "case_step_counter",
+        "case_garbage_sort",
+        "case_voice_command",
+    }
 
     for task in group.tasks:
         # Zero new ML capabilities: every case rides an existing one.
         assert task.ai_capability in EXISTING_CAPABILITIES
         # Application framing fields populated.
         assert task.case_scenario
-        assert task.bundled_dataset_id
         assert task.case_domain
         assert task.group == "应用案例"
+        # Bundled-pack batch carries a dataset id; self-collect batch leaves it empty.
+        if task.slug in SELF_COLLECT_CASES:
+            assert task.bundled_dataset_id == ""
+        else:
+            assert task.bundled_dataset_id
         # Rendering / export fields must be present like GENERAL_TASKS.
         assert task.concept_intro
         assert len(task.step_guides) == 4
@@ -49,6 +63,22 @@ def test_application_case_resolves_via_get_task() -> None:
     assert task.ai_capability == "text_classifier"
     assert task.bundled_dataset_id == "general_text_spam"
     assert get_task("application_cases", "missing") is None
+
+
+def test_self_collect_cases_resolve_with_image_audio_capabilities() -> None:
+    garbage = get_task("application_cases", "case_garbage_sort")
+    assert garbage is not None
+    assert garbage.ai_capability == "image_classifier"
+    assert garbage.sample_dataset_kind == "image"
+    assert garbage.case_domain == "环保"
+    assert garbage.bundled_dataset_id == ""
+
+    voice = get_task("application_cases", "case_voice_command")
+    assert voice is not None
+    assert voice.ai_capability == "audio_classifier"
+    assert voice.sample_dataset_kind == "audio"
+    assert voice.case_domain == "智能家居"
+    assert voice.bundled_dataset_id == ""
 
 
 def test_each_competition_has_student_tasks() -> None:
