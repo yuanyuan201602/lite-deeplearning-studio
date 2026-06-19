@@ -140,6 +140,8 @@ APPLICATION_CASES_GROUP = CompetitionDefinition(
 
 ## 5. 候选案例目录（供增删；标注复用能力 + 数据来源）
 
+> **落地决策见 [`APPLICATION_CASES_SHORTLIST.md`](APPLICATION_CASES_SHORTLIST.md)**：按「典型 + 一脉相承」两条硬标准，为每个能力定了一个旗舰典型案例（垃圾分类 / 垃圾短信拦截 / 语音指令 / 校园问答助手 / 运动计步 / 车牌检测），并按数据就绪度分了首批/次批/后批。下表为更宽的候选池，供增删。
+
 下表为**候选清单**，实现时按数据集就绪情况增删。「自带数据集」= 计划在 `LDS_DATASETS_ROOT` 下策展、`bundled_dataset_id` 一键导入；「学生自采」= 走现有上传/采集页。
 
 | 复用能力 | 候选案例 | 自带数据集？ |
