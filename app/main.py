@@ -27,6 +27,8 @@ from app.task_catalog import (
     get_task,
     list_competitions,
     normalize_edition,
+    related_case_for_capability,
+    related_general_task_for_case,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -42,7 +44,7 @@ DATASETS_ROOT = Path(os.environ.get("LDS_DATASETS_ROOT", PROJECT_ROOT / "dataset
 SCHOOL_NAME = "南昌市第二十三中学"
 
 # Bumping this busts browser caches for styles.css/logo.svg after an upgrade.
-ASSET_VERSION = "0.13.0"
+ASSET_VERSION = "0.13.1"
 
 EDITION_LABELS = {
     "all": "Lite DeepLearning Studio",
@@ -202,6 +204,15 @@ def create_app(
         task = get_task(competition_slug, task_slug, app_edition)
         if competition is None or task is None:
             raise HTTPException(status_code=404, detail="没有找到这个任务")
+        # Bidirectional 技术 ↔ 案例 cross-links (PRD §4.3): on an application case
+        # surface the underlying technique; on a technique surface a matching case.
+        is_case = competition.slug == APPLICATION_CASES_GROUP.slug
+        related_general = (
+            related_general_task_for_case(task.slug) if is_case else None
+        )
+        related_case = (
+            None if is_case else related_case_for_capability(task.ai_capability)
+        )
         return templates.TemplateResponse(
             request=request,
             name="workflow.html",
@@ -210,6 +221,9 @@ def create_app(
                 "competition": competition,
                 "task": task,
                 "hardware_labels": HARDWARE_LABELS,
+                "capability_labels": CAPABILITY_LABELS,
+                "related_general": related_general,
+                "related_case": related_case,
                 "error": "",
             },
         )
@@ -273,6 +287,14 @@ def create_app(
             "feature_modes": engine.list_feature_modes(task.ai_capability),
             "eval_count": project_service.eval_count(info),
         }
+        # 技术 → 案例 cross-link (PRD §4.3): on a general (技术) task, point at the
+        # matching application case so students can "用到真实场景". Cases (and
+        # detection, which has no case) get None and render nothing.
+        related_case = (
+            related_case_for_capability(task.ai_capability)
+            if competition.slug == GENERAL_ML.slug
+            else None
+        )
         return templates.TemplateResponse(
             request=request,
             name="project.html",
@@ -281,6 +303,7 @@ def create_app(
                 "competition": competition,
                 "task": task,
                 "info": info,
+                "related_case": related_case,
                 "hardware_labels": HARDWARE_LABELS,
                 "step_labels": STEP_LABELS.get(task.ai_capability, STEP_LABELS["default"]),
                 # Rendered with | safe inside a <script> tag, so escape "<" to keep

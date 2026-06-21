@@ -1,5 +1,11 @@
 from app.models import AiCapability
-from app.task_catalog import get_competition, get_task, list_competitions
+from app.task_catalog import (
+    get_competition,
+    get_task,
+    list_competitions,
+    related_case_for_capability,
+    related_general_task_for_case,
+)
 
 EXISTING_CAPABILITIES = set(AiCapability.__args__)
 
@@ -79,6 +85,32 @@ def test_self_collect_cases_resolve_with_image_audio_capabilities() -> None:
     assert voice.sample_dataset_kind == "audio"
     assert voice.case_domain == "智能家居"
     assert voice.bundled_dataset_id == ""
+
+
+def test_cross_link_helpers_pair_cases_and_general_tasks() -> None:
+    # PRD §4.3 mapping: each of the 5 case capabilities resolves both ways.
+    expected = {
+        "case_spam_filter": "general_text_classifier",
+        "case_campus_qa": "general_qa_retrieval",
+        "case_step_counter": "general_sensor_decision",
+        "case_garbage_sort": "general_image_classifier",
+        "case_voice_command": "general_audio_classifier",
+    }
+    for case_slug, general_slug in expected.items():
+        case = get_task("application_cases", case_slug)
+        general = related_general_task_for_case(case_slug)
+        assert general is not None
+        assert general.slug == general_slug
+        # And the reverse direction round-trips back to the same case.
+        back = related_case_for_capability(case.ai_capability)
+        assert back is not None
+        assert back.slug == case_slug
+
+
+def test_detection_capability_has_no_related_case() -> None:
+    # Detection has a general task but no application case → no link.
+    assert related_case_for_capability("object_detector_trainable") is None
+    assert related_general_task_for_case("case_missing") is None
 
 
 def test_each_competition_has_student_tasks() -> None:

@@ -1153,6 +1153,27 @@ APPLICATION_CASES_GROUP = CompetitionDefinition(
     tasks=APPLICATION_CASES,
 )
 
+# Single source of truth for the bidirectional 技术 ↔ 案例 cross-links (PRD §4.3).
+# A case and its underlying general task share the same ai_capability, so the
+# pairing is derived from the catalogs themselves rather than hardcoded.
+# Detection (object_detector_trainable) has a general task but no case → no link.
+_CASE_BY_CAPABILITY = {case.ai_capability: case for case in APPLICATION_CASES}
+_GENERAL_BY_CAPABILITY = {task.ai_capability: task for task in GENERAL_TASKS}
+
+
+def related_case_for_capability(capability: str) -> TaskDefinition | None:
+    """The application case that reuses this ai_capability, or None (e.g. detection)."""
+    return _CASE_BY_CAPABILITY.get(capability)
+
+
+def related_general_task_for_case(case_slug: str) -> TaskDefinition | None:
+    """The general (技术) task underlying an application case, by case slug."""
+    case = next((task for task in APPLICATION_CASES if task.slug == case_slug), None)
+    if case is None:
+        return None
+    return _GENERAL_BY_CAPABILITY.get(case.ai_capability)
+
+
 COMPETITIONS = [
     CompetitionDefinition(
         slug="smart_museum",

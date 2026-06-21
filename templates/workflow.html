@@ -34,9 +34,14 @@
     <section class="concept-card">
       <h2>了解原理</h2>
       <p>{{ task.concept_intro }}</p>
-      {% if task.case_scenario %}
-        <p class="concept-tech">本案例用到的技术 → <strong>{{ task.title }}</strong> 背后是机器学习里的一种基础能力，
-        在「机器学习任务」里可以单独练它的原理。</p>
+      {% if related_general %}
+        <p class="concept-tech">本案例用到的技术 →
+          <a href="/workflow/general_ml/{{ related_general.slug }}"><strong>{{ capability_labels[task.ai_capability] }}</strong></a>。
+          想单独练这门技术的原理，可以去「机器学习任务」里学。</p>
+      {% elif related_case %}
+        <p class="concept-tech">学会了？去真实场景练一练 →
+          <a href="/workflow/application_cases/{{ related_case.slug }}"><strong>{{ related_case.title }}</strong></a>
+          案例，把这门技术用到一个真实问题里。</p>
       {% endif %}
     </section>
   {% endif %}

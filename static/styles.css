@@ -2672,6 +2672,13 @@ body.tutorial-locked {
   line-height: 1.8;
 }
 
+/* 技术 → 案例 cross-link under the step-4 export panel (additive to .edu-next). */
+.case-pointer {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--soft);
+}
+
 /* ===== 任务介绍页：生活中的例子 ===== */
 .examples-card {
   background: var(--surface);

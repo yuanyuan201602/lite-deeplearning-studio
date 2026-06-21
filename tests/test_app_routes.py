@@ -126,6 +126,45 @@ def test_application_case_full_flow_with_bundled_pack(tmp_path: Path) -> None:
     assert "拦截练习" in page.text
 
 
+def test_case_workflow_links_to_underlying_general_task(tmp_path: Path) -> None:
+    # 案例 → 技术 (PRD §4.3): garbage-sort case points back at image classification.
+    response = make_client(tmp_path).get("/workflow/application_cases/case_garbage_sort")
+
+    assert response.status_code == 200
+    assert "/workflow/general_ml/general_image_classifier" in response.text
+    assert "图像分类" in response.text
+
+
+def test_general_task_workflow_links_to_matching_case(tmp_path: Path) -> None:
+    # 技术 → 案例 (PRD §4.3): the technique intro page surfaces its case.
+    response = make_client(tmp_path).get("/workflow/general_ml/general_image_classifier")
+
+    assert response.status_code == 200
+    assert "/workflow/application_cases/case_garbage_sort" in response.text
+
+
+def test_general_project_page_links_to_matching_case(tmp_path: Path) -> None:
+    # 技术 → 案例 also renders in the step-4 export panel of the project page.
+    client = make_client(tmp_path)
+    project_id = create_project(
+        client, "general_ml", "general_text_classifier", "互链练习"
+    )
+    page = client.get(f"/project/{project_id}")
+
+    assert page.status_code == 200
+    assert "/workflow/application_cases/case_spam_filter" in page.text
+    # Additive: the curated next_steps text is untouched.
+    assert "下一步探索" in page.text
+
+
+def test_detection_has_no_case_cross_link(tmp_path: Path) -> None:
+    # Detection has a general task but no application case → no cross-link.
+    response = make_client(tmp_path).get("/workflow/general_ml/general_object_detector")
+
+    assert response.status_code == 200
+    assert "/workflow/application_cases/" not in response.text
+
+
 def test_competition_page_lists_competition_tasks(tmp_path: Path) -> None:
     response = make_client(tmp_path).get("/competition/smart_museum")
 
