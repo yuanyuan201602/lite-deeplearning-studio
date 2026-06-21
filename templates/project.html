@@ -130,6 +130,10 @@
         <p>{{ task.next_steps }}</p>
       </div>
     {% endif %}
+    {% if related_case %}
+      <p class="case-pointer">学会了？去真实场景练一练 →
+        <a href="/workflow/application_cases/{{ related_case.slug }}">{{ related_case.title }}</a></p>
+    {% endif %}
   </section>
 
   <script id="initial-state" type="application/json">{{ initial_state_json | safe }}</script>

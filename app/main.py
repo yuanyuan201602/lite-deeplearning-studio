@@ -21,11 +21,14 @@ from app.models import AppEdition, ProjectCreateRequest
 from app.services.export_service import ExportService
 from app.services.project_service import ProjectService
 from app.task_catalog import (
+    APPLICATION_CASES_GROUP,
     GENERAL_ML,
     get_competition,
     get_task,
     list_competitions,
     normalize_edition,
+    related_case_for_capability,
+    related_general_task_for_case,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -41,7 +44,7 @@ DATASETS_ROOT = Path(os.environ.get("LDS_DATASETS_ROOT", PROJECT_ROOT / "dataset
 SCHOOL_NAME = "南昌市第二十三中学"
 
 # Bumping this busts browser caches for styles.css/logo.svg after an upgrade.
-ASSET_VERSION = "0.12.0"
+ASSET_VERSION = "0.13.1"
 
 EDITION_LABELS = {
     "all": "Lite DeepLearning Studio",
@@ -67,6 +70,18 @@ HARDWARE_LABELS = {
 STEP_LABELS = {
     "default": ["准备数据", "训练模型", "测试效果", "导出材料"],
     "ocr_typo_checker": ["输入正确文字", "保存正确文字", "查错测试", "导出材料"],
+}
+
+# Student-facing Chinese name for each ai_capability, used by the application-case
+# cards' "用到：<能力>" tag to point back at the underlying technique.
+CAPABILITY_LABELS = {
+    "text_classifier": "文本分类",
+    "ocr_typo_checker": "文字查错",
+    "image_classifier": "图像分类",
+    "audio_classifier": "语音分类",
+    "qa_retrieval": "智能问答",
+    "sensor_decision_model": "传感器决策",
+    "object_detector_trainable": "目标检测",
 }
 
 
@@ -105,6 +120,7 @@ def create_app(
     def visible_projects() -> list:
         visible_slugs = {competition.slug for competition in list_competitions(app_edition)}
         visible_slugs.add(GENERAL_ML.slug)
+        visible_slugs.add(APPLICATION_CASES_GROUP.slug)
         return [
             info
             for info in project_service.list_projects()
@@ -124,6 +140,8 @@ def create_app(
             context={
                 **base_context(request),
                 "general_tasks": GENERAL_ML.tasks,
+                "application_cases": APPLICATION_CASES_GROUP.tasks,
+                "capability_labels": CAPABILITY_LABELS,
                 "competitions": list_competitions(app_edition),
                 "recent_projects": projects[:8],
                 "task_title": task_title,
@@ -141,7 +159,10 @@ def create_app(
     @app.get("/competition/{competition_slug}", response_class=HTMLResponse)
     def competition_page(request: Request, competition_slug: str) -> HTMLResponse:
         competition = get_competition(competition_slug, app_edition)
-        if competition is None or competition.slug == GENERAL_ML.slug:
+        if competition is None or competition.slug in (
+            GENERAL_ML.slug,
+            APPLICATION_CASES_GROUP.slug,
+        ):
             raise HTTPException(status_code=404, detail="没有找到这个竞赛")
         projects = [
             info for info in visible_projects() if info.competition_slug == competition.slug
@@ -183,6 +204,15 @@ def create_app(
         task = get_task(competition_slug, task_slug, app_edition)
         if competition is None or task is None:
             raise HTTPException(status_code=404, detail="没有找到这个任务")
+        # Bidirectional 技术 ↔ 案例 cross-links (PRD §4.3): on an application case
+        # surface the underlying technique; on a technique surface a matching case.
+        is_case = competition.slug == APPLICATION_CASES_GROUP.slug
+        related_general = (
+            related_general_task_for_case(task.slug) if is_case else None
+        )
+        related_case = (
+            None if is_case else related_case_for_capability(task.ai_capability)
+        )
         return templates.TemplateResponse(
             request=request,
             name="workflow.html",
@@ -191,6 +221,9 @@ def create_app(
                 "competition": competition,
                 "task": task,
                 "hardware_labels": HARDWARE_LABELS,
+                "capability_labels": CAPABILITY_LABELS,
+                "related_general": related_general,
+                "related_case": related_case,
                 "error": "",
             },
         )
@@ -254,6 +287,14 @@ def create_app(
             "feature_modes": engine.list_feature_modes(task.ai_capability),
             "eval_count": project_service.eval_count(info),
         }
+        # 技术 → 案例 cross-link (PRD §4.3): on a general (技术) task, point at the
+        # matching application case so students can "用到真实场景". Cases (and
+        # detection, which has no case) get None and render nothing.
+        related_case = (
+            related_case_for_capability(task.ai_capability)
+            if competition.slug == GENERAL_ML.slug
+            else None
+        )
         return templates.TemplateResponse(
             request=request,
             name="project.html",
@@ -262,6 +303,7 @@ def create_app(
                 "competition": competition,
                 "task": task,
                 "info": info,
+                "related_case": related_case,
                 "hardware_labels": HARDWARE_LABELS,
                 "step_labels": STEP_LABELS.get(task.ai_capability, STEP_LABELS["default"]),
                 # Rendered with | safe inside a <script> tag, so escape "<" to keep

@@ -73,6 +73,98 @@ def test_homepage_shows_general_tasks_and_learn_entry(tmp_path: Path) -> None:
     assert "/learn/deep-learning" in response.text
 
 
+def test_homepage_shows_application_cases_section(tmp_path: Path) -> None:
+    response = make_client(tmp_path).get("/")
+
+    assert response.status_code == 200
+    assert "应用案例" in response.text
+    assert "垃圾短信拦截" in response.text
+    assert "校园问答助手" in response.text
+    assert "运动计步" in response.text
+    assert "/workflow/application_cases/case_spam_filter" in response.text
+
+
+def test_application_case_workflow_page_renders(tmp_path: Path) -> None:
+    response = make_client(tmp_path).get("/workflow/application_cases/case_spam_filter")
+
+    assert response.status_code == 200
+    assert "垃圾短信拦截" in response.text
+    # case_scenario one-liner surfaces on the workflow page.
+    assert "帮你拦下来" in response.text
+    assert "创建项目" in response.text
+
+
+def test_application_cases_have_no_competition_page(tmp_path: Path) -> None:
+    # Always-visible group like general_ml: no dedicated /competition page.
+    assert make_client(tmp_path).get("/competition/application_cases").status_code == 404
+
+
+def test_application_case_available_in_every_edition(tmp_path: Path) -> None:
+    client = make_client(tmp_path, edition="smart_museum")
+
+    assert client.get("/workflow/application_cases/case_campus_qa").status_code == 200
+
+
+def test_application_case_full_flow_with_bundled_pack(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    project_id = create_project(
+        client, "application_cases", "case_spam_filter", "拦截练习"
+    )
+
+    # First-batch cases load their flagship data_packs/ pack in step 1.
+    load = client.post(
+        f"/api/projects/{project_id}/data/pack",
+        json={"pack_file": "general_text_spam.json"},
+    )
+    assert load.status_code == 200
+    assert load.json()["dataset"]["sample_count"] > 0
+
+    train = client.post(f"/api/projects/{project_id}/train")
+    assert train.status_code == 200
+
+    page = client.get("/")
+    assert "拦截练习" in page.text
+
+
+def test_case_workflow_links_to_underlying_general_task(tmp_path: Path) -> None:
+    # 案例 → 技术 (PRD §4.3): garbage-sort case points back at image classification.
+    response = make_client(tmp_path).get("/workflow/application_cases/case_garbage_sort")
+
+    assert response.status_code == 200
+    assert "/workflow/general_ml/general_image_classifier" in response.text
+    assert "图像分类" in response.text
+
+
+def test_general_task_workflow_links_to_matching_case(tmp_path: Path) -> None:
+    # 技术 → 案例 (PRD §4.3): the technique intro page surfaces its case.
+    response = make_client(tmp_path).get("/workflow/general_ml/general_image_classifier")
+
+    assert response.status_code == 200
+    assert "/workflow/application_cases/case_garbage_sort" in response.text
+
+
+def test_general_project_page_links_to_matching_case(tmp_path: Path) -> None:
+    # 技术 → 案例 also renders in the step-4 export panel of the project page.
+    client = make_client(tmp_path)
+    project_id = create_project(
+        client, "general_ml", "general_text_classifier", "互链练习"
+    )
+    page = client.get(f"/project/{project_id}")
+
+    assert page.status_code == 200
+    assert "/workflow/application_cases/case_spam_filter" in page.text
+    # Additive: the curated next_steps text is untouched.
+    assert "下一步探索" in page.text
+
+
+def test_detection_has_no_case_cross_link(tmp_path: Path) -> None:
+    # Detection has a general task but no application case → no cross-link.
+    response = make_client(tmp_path).get("/workflow/general_ml/general_object_detector")
+
+    assert response.status_code == 200
+    assert "/workflow/application_cases/" not in response.text
+
+
 def test_competition_page_lists_competition_tasks(tmp_path: Path) -> None:
     response = make_client(tmp_path).get("/competition/smart_museum")
 

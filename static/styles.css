@@ -260,6 +260,21 @@ h2 {
   flex: 1;
 }
 
+.case-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.case-tag {
+  align-self: flex-start;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
 .competition-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -414,6 +429,13 @@ h2 {
   grid-template-columns: 1.4fr 1fr;
   gap: 28px;
   margin-bottom: 28px;
+}
+
+.intro-scenario {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent-strong);
+  margin: 4px 0 0;
 }
 
 .intro-copy {
@@ -657,6 +679,12 @@ h2 {
   color: var(--soft);
   line-height: 1.7;
   margin: 0;
+}
+
+.concept-tech {
+  margin-top: 12px !important;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
 }
 
 .panel-actions {
@@ -2642,6 +2670,13 @@ body.tutorial-locked {
   font-size: 14px;
   color: var(--soft);
   line-height: 1.8;
+}
+
+/* 技术 → 案例 cross-link under the step-4 export panel (additive to .edu-next). */
+.case-pointer {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--soft);
 }
 
 /* ===== 任务介绍页：生活中的例子 ===== */

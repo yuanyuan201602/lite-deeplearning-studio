@@ -792,6 +792,388 @@ GENERAL_ML = CompetitionDefinition(
     tasks=GENERAL_TASKS,
 )
 
+
+# 应用案例（学以致用）：在「按技术分类」之上加一层「按真实场景分类」。
+# 每个案例 = 现有 ai_capability + 应用叙事，复用现有四步与引擎，不新增任何能力。
+# 首批三案例（文本/问答/传感器）挂 data_packs/ 里现成的样本包（bundled_dataset_id），
+# 学生第 1 步点「加载样本数据包」即可一键导入。次批两案例（图像/音频）数据无法内联，
+# 走采集助手让学生自采，bundled_dataset_id 留空。
+APPLICATION_CASES = [
+    TaskDefinition(
+        slug="case_spam_filter",
+        title="垃圾短信拦截",
+        summary="用真实的正常/骚扰短信，训练一个能自动认出垃圾短信的文本分类器。",
+        student_goal="把「文本分类」用到一个真实场景：让手机自动拦下骚扰短信。",
+        group="应用案例",
+        requirement_source="应用案例 · 学以致用",
+        competition_requirements=[
+            "导入「垃圾信息识别」样本包，或自己粘贴正常/垃圾短信",
+            "训练文本分类模型并查看准确率",
+            "输入一条新短信，看模型判断是正常还是垃圾",
+            "导出材料包并在电脑上运行验证",
+        ],
+        ai_capability="text_classifier",
+        sample_dataset_kind="text",
+        runtime_requirements=["scikit-learn", "joblib", "numpy"],
+        voice_profile="none",
+        paused_features=[],
+        suggested_hardware=["student_laptop"],
+        required_outputs=STANDARD_OUTPUTS,
+        starter_steps=[
+            "加载「垃圾信息识别」样本包",
+            "看看正常短信和垃圾短信各长什么样",
+            "点击训练",
+            "输入一条新短信测试",
+            "导出材料包",
+        ],
+        case_scenario="让手机自动认出骚扰短信，帮你拦下来。",
+        bundled_dataset_id="general_text_spam",
+        case_domain="生活",
+        concept_intro=(
+            "每天都有骚扰广告、诈骗短信塞进手机，手机管家会自动把它们拦进垃圾箱——"
+            "这背后就是一个文本分类模型在工作。它不真正「读懂」短信，"
+            "而是统计「免费」「中奖」「点击链接」这类词在垃圾短信里出现得多不多，"
+            "来判断一条新短信是正常还是垃圾。这正是文本分类最经典、最实用的落地场景。"
+        ),
+        step_guides=[
+            "点「加载样本数据包」导入「垃圾信息识别」，里面已经分好「正常」和「垃圾」两类短信。"
+            "你也可以再粘贴几条自己收到过的骚扰短信，让模型见过的样子更多。",
+            "点训练。模型会统计哪些词在垃圾短信里更常出现（如「免费」「中奖」「链接」），"
+            "形成判断依据。准确率太低通常说明两类短信收集得还不够多、不够典型。",
+            "输入一条新短信测试，看模型判断正常还是垃圾、置信度多高。"
+            "故意输入一条「伪装得很像正常」的广告，看模型会不会被骗到。",
+            "导出的 predict.py 可以直接接收一条短信文字、输出「正常 / 垃圾」，"
+            "把它接到拦截程序里，就是一个最小可用的短信过滤器。",
+        ],
+        real_world_examples=[
+            "手机管家、12321 举报平台，每天自动拦下海量诈骗和广告短信。",
+            "邮箱的垃圾邮件过滤——文本分类最早成名的应用，原理一模一样。",
+            "社交平台自动识别违规、刷屏评论并折叠。",
+        ],
+        common_mistakes=[
+            "垃圾短信样本太少、太单一，模型只会拦它见过的那几种套路，换种话术就漏。"
+            "真实的骚扰短信花样很多，样本越丰富越拦得住。",
+            "正常短信里混进了几条其实是广告的，标签标错了，模型学到的依据就乱了。",
+        ],
+        hands_on_experiments=[
+            "伪装实验：写一条「读起来很正常」的广告短信，看模型识不识破，再把它当垃圾样本补进去重训。",
+            "加数据实验：每类从几条加到十几条，看准确率怎么变。",
+            "找混淆：训练后看「混淆矩阵」，是正常被当成垃圾多，还是垃圾漏成正常多？",
+        ],
+        next_steps=(
+            "你做的是「数词」的文本分类——只看哪些词出现得多。"
+            "真正能读懂一句话语气、识破伪装的大模型（如 BERT）是怎么做到的？"
+            "去「深度学习地图」第 4 节看文本技术从词袋到 Transformer 的演进。"
+        ),
+    ),
+    TaskDefinition(
+        slug="case_campus_qa",
+        title="校园问答助手",
+        summary="录入校园生活问答对，做一个学生问一句、自动找到答案的小助手。",
+        student_goal="把「智能问答」用到一个真实场景：校园里的自动问答客服。",
+        group="应用案例",
+        requirement_source="应用案例 · 学以致用",
+        competition_requirements=[
+            "导入「校园生活问答」样本包，或自己录入问答对",
+            "训练后用一个新问题测试",
+            "观察相似度分数和兜底回答",
+            "导出材料包并在电脑上运行验证",
+        ],
+        ai_capability="qa_retrieval",
+        sample_dataset_kind="qa",
+        runtime_requirements=["scikit-learn", "joblib", "numpy"],
+        voice_profile="none",
+        paused_features=[],
+        suggested_hardware=["student_laptop"],
+        required_outputs=STANDARD_OUTPUTS,
+        starter_steps=[
+            "加载「校园生活问答」样本包",
+            "看看一组组问答对长什么样",
+            "点击训练建立检索库",
+            "换种问法问一个新问题测试",
+            "导出材料包",
+        ],
+        case_scenario="学生问一句，机器自动找到最接近的答案。",
+        bundled_dataset_id="general_qa_school",
+        case_domain="校园",
+        concept_intro=(
+            "学校公众号、智能客服总能秒回「图书馆几点关门」「怎么请假」这类常见问题——"
+            "靠的就是检索式问答。它不自己编答案，而是从老师整理好的问答库里，"
+            "找出和你这句话最像的已知问题，把对应答案返回给你。"
+            "答案完全来自知识库、不会乱编，特别适合校园这种「答案要准、不能瞎说」的场景。"
+        ),
+        step_guides=[
+            "点「加载样本数据包」导入「校园生活问答」，里面是一组组「问题 | 答案」。"
+            "同一个答案最好配多种问法（「几点关门」「什么时候闭馆」），助手才更聪明。",
+            "点训练。系统会把每个问题转成数字向量、建立相似度检索库——"
+            "毫秒级完成，普通电脑就行，不需要大模型。",
+            "换一种没录过的问法问同一件事，看相似度分数（0–1）有多高、找没找对答案。"
+            "再问一个知识库里完全没有的问题，看会不会触发兜底回答。",
+            "导出的 predict.py 接收一个问题、返回最匹配的答案和相似度。"
+            "换掉知识库文件就能换内容——可以做成班级值日问答、社团报名问答等。",
+        ],
+        real_world_examples=[
+            "学校公众号自动回复「校历」「作息时间」等高频问题。",
+            "企业、银行的在线客服，先用检索式问答接住大部分常见问题。",
+            "博物馆导览机：游客问「这件文物多少年了」，它从讲解词里找答案。",
+        ],
+        common_mistakes=[
+            "一个答案只配了一种问法，学生换个说法就找不到。多配几种问法是关键。",
+            "知识库太小，稍微偏一点的问题就只能给兜底回答。问答对越全，助手越好用。",
+        ],
+        hands_on_experiments=[
+            "问法实验：先给一个答案只配 1 种问法，换说法测能不能命中；再补到 3 种问法重测。",
+            "兜底实验：故意问一个知识库里完全没有的问题，看相似度有多低、是否触发兜底回答。",
+            "扩库实验：自己加几组班级专属的问答（「值日表在哪」），训练后问问看。",
+        ],
+        next_steps=(
+            "检索式问答是从写好的知识库里「找」答案，可靠、不会乱编。"
+            "生成式问答（像 ChatGPT 那样「现写」答案）和它有什么不同、各自适合什么场景？"
+            "新手教程第 3 章和术语表里有对比讲解。"
+        ),
+    ),
+    TaskDefinition(
+        slug="case_step_counter",
+        title="运动计步",
+        summary="用三轴加速度数据，训练一个判断你在静止、走路还是跑步的模型。",
+        student_goal="把「传感器决策」用到一个真实场景：手环/手机里的运动识别。",
+        group="应用案例",
+        requirement_source="应用案例 · 学以致用",
+        competition_requirements=[
+            "导入「运动状态传感器」样本包，或自己准备加速度 CSV",
+            "训练决策模型并查看规则",
+            "输入一组新读数测试",
+            "导出材料包并在电脑上运行验证",
+        ],
+        ai_capability="sensor_decision_model",
+        sample_dataset_kind="sensor",
+        runtime_requirements=["scikit-learn", "joblib", "numpy"],
+        voice_profile="none",
+        paused_features=[],
+        suggested_hardware=["student_laptop"],
+        required_outputs=STANDARD_OUTPUTS,
+        starter_steps=[
+            "加载「运动状态传感器」样本包",
+            "看看三轴加速度数据长什么样",
+            "点击训练并查看决策规则",
+            "输入一组新读数测试",
+            "导出材料包",
+        ],
+        case_scenario="靠传感器读数，判断你是站着、走着还是在跑。",
+        bundled_dataset_id="general_sensor_motion",
+        case_domain="生活",
+        concept_intro=(
+            "手环、手机里的「今日步数」是怎么算出来的？靠的是加速度传感器——"
+            "静止、走路、跑步时，手腕的加速度数值有明显不同的规律。"
+            "决策树模型从这些数值里学出一套「如果…就…」的判断规则，"
+            "判断你此刻处于哪种运动状态。它最大的好处是规则看得见、读得懂，不是黑箱。"
+        ),
+        step_guides=[
+            "点「加载样本数据包」导入「运动状态传感器」，里面是三轴加速度读数，"
+            "最后一列标着「静止 / 行走 / 跑步」。每种状态都要有足够多的样本行。",
+            "点训练。决策树会找「最佳分叉点」学出规则，比如「某轴抖动幅度大 → 跑步」。"
+            "训练后展开「决策规则」，能直接看到模型学到的 if-else。",
+            "输入一组新的加速度读数，看模型判断哪种状态。"
+            "用介于走路和跑步之间的数值测一测，看边界判断合不合理。",
+            "导出的 predict.py 接收一行传感器读数、输出运动状态。"
+            "在行空板上接真实加速度计，就能做一个会区分动作的迷你计步器。",
+        ],
+        real_world_examples=[
+            "运动手环 / 手机的「今日步数」，先判断动作再计步。",
+            "跌倒检测手表：识别出突然的剧烈加速度，自动呼救。",
+            "游戏手柄、VR 设备靠加速度计感知你的挥动和转身。",
+        ],
+        common_mistakes=[
+            "每种动作只采了几行、还都很相似，模型对没见过的读数判断不稳。每种状态多采些。",
+            "走路和跑步的样本采得太「标准」，真实使用时介于两者之间的读数就分不清了。",
+        ],
+        hands_on_experiments=[
+            "读规则：训练后展开「决策规则」，看模型用哪一轴、什么阈值区分跑步和走路。",
+            "边界实验：用介于走路和跑步之间的读数测试，看模型判得合不合理。",
+            "看重要性：训练后看「各传感器重要程度」，哪一轴对判断运动状态最关键？",
+        ],
+        next_steps=(
+            "决策树的优点是「规则看得见」。数据更复杂时，可以在训练页换「梯度提升」"
+            "等更强的算法（准确率可能更高，但规则变成黑箱）。"
+            "想了解神经网络为什么是「黑箱」，去「深度学习地图」。"
+        ),
+    ),
+    # 次批：图像 / 音频两案例。学生自采数据（走采集助手 /collect），不挂样本包，
+    # 所以 bundled_dataset_id 留空——其余完全复用对应通用任务的运行/硬件/输出字段。
+    TaskDefinition(
+        slug="case_garbage_sort",
+        title="垃圾分类",
+        summary="拍几类垃圾的照片，训练一个看一眼就知道该扔哪个桶的图像分类器。",
+        student_goal="把「图像分类」用到一个真实场景：让机器帮你把垃圾扔对桶。",
+        group="应用案例",
+        requirement_source="应用案例 · 学以致用",
+        competition_requirements=[
+            "为可回收/厨余/有害/其他等类别各拍几张垃圾照片",
+            "训练图像分类模型并查看准确率",
+            "拍一件新垃圾测试模型判断哪一类",
+            "导出材料包并在电脑上运行验证",
+        ],
+        ai_capability="image_classifier",
+        sample_dataset_kind="image",
+        runtime_requirements=["scikit-learn", "joblib", "numpy", "pillow", "onnxruntime"],
+        voice_profile="none",
+        paused_features=[],
+        suggested_hardware=["student_laptop"],
+        required_outputs=STANDARD_OUTPUTS,
+        starter_steps=[
+            "添加垃圾类别（可回收/厨余/有害/其他）",
+            "每类拍几张实物照片",
+            "点击训练",
+            "拍一件新垃圾测试",
+            "导出材料包",
+        ],
+        case_scenario="让机器看一眼就知道这是哪类垃圾，扔对桶。",
+        bundled_dataset_id="",
+        case_domain="环保",
+        concept_intro=(
+            "垃圾分类是天天宣传的环保大事，可很多人站在垃圾桶前还是犯难：这个到底算可回收还是其他？"
+            "「智能垃圾桶」的做法是让摄像头拍一眼、用图像分类模型判断它属于哪一类，"
+            "再提示你扔进对应的桶。模型不真正「认识」物体，而是从你拍的大量样例里学出"
+            "每类垃圾的视觉特征（颜色、形状、材质），来判断一张新照片该归哪一桶。"
+        ),
+        step_guides=[
+            "按本地分类标准建几个类别，常见的是「可回收 / 厨余 / 有害 / 其他」。"
+            "每类拍至少 5 张真实垃圾照片，角度、光线、背景越多样越好——"
+            "塑料瓶要拍立着的、躺着的、压扁的，模型才认得全。没有照片时可以先拿身边的物品练手。",
+            "点训练。模型会提取每张照片的视觉特征，再学哪些特征对应哪一类垃圾。"
+            "「交叉验证准确率」反映它对没见过的垃圾照片的判断力——"
+            "训练准确率高但交叉验证低，说明它在死记你拍的那几张，而不是真学会了分类。",
+            "拍一件没参与训练的垃圾测试，看模型判哪一类、置信度多高。"
+            "故意拿一件「长得像可回收、其实是其他」的东西（如脏外卖盒）考考它，看会不会被骗。",
+            "导出的 predict.py 接收一张垃圾照片、输出它属于哪一类。"
+            "把它接到摄像头上，就是一个最小可用的「智能垃圾桶」识别程序。",
+        ],
+        real_world_examples=[
+            "小区、商场的「智能垃圾桶」：对着投放口拍一眼，自动判断该开哪个桶盖。",
+            "垃圾处理厂传送带上的分拣机器人，靠图像识别把可回收物挑出来。",
+            "手机里的「拍照查垃圾分类」小程序，拍一下就告诉你这是什么垃圾。",
+        ],
+        common_mistakes=[
+            "每类只拍几张、还都摆在同一个背景上（比如都放白桌子上）。"
+            "模型可能学的是「白桌子」而不是垃圾本身，换个背景就认错。多换背景、角度、光线。",
+            "类别边界没想清楚——同一件东西一会儿标可回收、一会儿标其他，标签自相矛盾，模型学乱。"
+            "先按本地标准把「哪类算什么」定清楚再拍。",
+        ],
+        hands_on_experiments=[
+            "伪装实验：拿一件容易混淆的垃圾（脏纸盒、带食物残渣的塑料盒）测试，"
+            "看模型判得对不对，再把它补进正确类别重训。",
+            "背景实验：同一类垃圾分别在桌面、地面、手里拍，看多样的背景是不是让模型更稳。",
+            "特征对比：同一份照片分别用「像素」和「MobileNet 迁移学习」各训一次，"
+            "比较准确率，体会借大网络提特征有多管用（需先下载 MobileNet）。",
+        ],
+        next_steps=(
+            "你做的是「整张图属于哪一类」的图像分类。"
+            "如果一张照片里同时有好几件垃圾，要把每一件都框出来分别识别，"
+            "那就是「目标检测」了——去「深度学习地图」看看检测和分类有什么不同。"
+        ),
+    ),
+    TaskDefinition(
+        slug="case_voice_command",
+        title="语音指令",
+        summary="录几条不同指令的语音，训练一个听一句就知道你下了哪条命令的模型。",
+        student_goal="把「语音分类」用到一个真实场景：喊一声就能控制的智能家居。",
+        group="应用案例",
+        requirement_source="应用案例 · 学以致用",
+        competition_requirements=[
+            "为「开灯 / 关灯 / 播放音乐」等指令各录几段语音",
+            "训练语音分类模型并查看准确率",
+            "现场喊一句新指令测试模型",
+            "导出材料包并在电脑上运行验证",
+        ],
+        ai_capability="audio_classifier",
+        sample_dataset_kind="audio",
+        runtime_requirements=["scikit-learn", "joblib", "numpy"],
+        voice_profile="none",
+        paused_features=[],
+        suggested_hardware=["student_laptop"],
+        required_outputs=STANDARD_OUTPUTS,
+        starter_steps=[
+            "添加指令类别（开灯/关灯/播放音乐）",
+            "每条指令录几段语音",
+            "点击训练",
+            "现场喊一句测试",
+            "导出材料包",
+        ],
+        case_scenario="喊一声『开灯』，机器听懂并执行。",
+        bundled_dataset_id="",
+        case_domain="智能家居",
+        concept_intro=(
+            "小爱同学、小度、Siri——喊一声「开灯」「放音乐」，机器就照做。"
+            "这背后是语音分类：它不去逐字识别你说了什么文字，而是把每条指令的声音"
+            "分解成音调、节奏、响度等数值特征，学出「这种声波形状 → 开灯」的对应关系。"
+            "因为只看声波形状、不依赖文字识别，它在普通电脑上几秒就能训练，"
+            "特别适合做「固定几条指令」的语音控制。"
+        ),
+        step_guides=[
+            "先定好要识别哪几条指令（如「开灯 / 关灯 / 播放音乐」），每条建一个类别。"
+            "每条指令录至少 5 段，最好换不同的人、不同语速语调来录——"
+            "只有一个人用一种腔调录的模型，别人喊就容易听不懂。每段保持 1–3 秒、环境安静。",
+            "点训练。系统把每段录音分解成频率片段，提取响度、音调分布等数值特征，"
+            "再学哪种声波形状对应哪条指令。数据太少时交叉验证会跳过，这时多录几段最有用。",
+            "现场喊一句没录过的指令测试，看模型听成哪一条。"
+            "再换个同学用不同语调喊同一条指令，看模型还认不认得——这能看出它「认音色」还是「认指令」。",
+            "导出的 predict.py 用 sounddevice 实时录音、输出听到的是哪条指令。"
+            "在行空板上跑 run.py（已适配硬件麦克风），听到指令后触发对应动作，"
+            "就是一个最小可用的语音控制：喊「开灯」就点亮一盏灯。",
+        ],
+        real_world_examples=[
+            "智能音箱 / 智能家居：喊「开灯」「关空调」「放音乐」就执行。",
+            "车载语音：开车时喊一句「导航回家」「接电话」，不用动手。",
+            "无障碍设备：行动不便的人用语音指令控制家里的电器。",
+        ],
+        common_mistakes=[
+            "只有一个人、一种语调录全部样本，模型其实在认你的音色而不是指令内容，"
+            "换个人喊就失灵。多找几个人、换语速语调来录。",
+            "录音环境太吵，背景噪音盖过指令声，模型被噪音带偏。尽量在安静处录、离麦克风近一点。",
+        ],
+        hands_on_experiments=[
+            "换人实验：先只用自己的声音训练，让同学喊同样的指令测试，看认不认得；"
+            "再把同学的录音补进去重训，对比效果。",
+            "加数据实验：每条指令从 2 段加到 8 段，看准确率怎么变。",
+            "找混淆：训练后看「混淆矩阵」，「开灯」和「关灯」是不是最容易被听混？"
+            "想想为什么（发音很像），再多录些这两条重训。",
+        ],
+        next_steps=(
+            "你做的是「固定几条指令」的语音分类——只认事先训练过的那几句。"
+            "真正能听懂任意一句话、转成文字的语音识别（如智能音箱的听写）是怎么做到的？"
+            "去「深度学习地图」第 5 节看音频是怎么变成「频谱图」再交给神经网络的。"
+        ),
+    ),
+]
+
+APPLICATION_CASES_GROUP = CompetitionDefinition(
+    slug="application_cases",
+    title="应用案例",
+    summary="把学过的技术用到真实场景：垃圾短信拦截、校园问答助手、运动计步、垃圾分类、语音指令。",
+    tasks=APPLICATION_CASES,
+)
+
+# Single source of truth for the bidirectional 技术 ↔ 案例 cross-links (PRD §4.3).
+# A case and its underlying general task share the same ai_capability, so the
+# pairing is derived from the catalogs themselves rather than hardcoded.
+# Detection (object_detector_trainable) has a general task but no case → no link.
+_CASE_BY_CAPABILITY = {case.ai_capability: case for case in APPLICATION_CASES}
+_GENERAL_BY_CAPABILITY = {task.ai_capability: task for task in GENERAL_TASKS}
+
+
+def related_case_for_capability(capability: str) -> TaskDefinition | None:
+    """The application case that reuses this ai_capability, or None (e.g. detection)."""
+    return _CASE_BY_CAPABILITY.get(capability)
+
+
+def related_general_task_for_case(case_slug: str) -> TaskDefinition | None:
+    """The general (技术) task underlying an application case, by case slug."""
+    case = next((task for task in APPLICATION_CASES if task.slug == case_slug), None)
+    if case is None:
+        return None
+    return _GENERAL_BY_CAPABILITY.get(case.ai_capability)
+
+
 COMPETITIONS = [
     CompetitionDefinition(
         slug="smart_museum",
@@ -825,9 +1207,11 @@ def get_competition(
     slug: str,
     edition: AppEdition | str | None = "all",
 ) -> CompetitionDefinition | None:
-    # 通用任务组在所有版本都可用，不参与竞赛版本过滤。
+    # 通用任务组与应用案例组在所有版本都可用，不参与竞赛版本过滤。
     if slug == GENERAL_ML.slug:
         return GENERAL_ML
+    if slug == APPLICATION_CASES_GROUP.slug:
+        return APPLICATION_CASES_GROUP
     return next((competition for competition in list_competitions(edition) if competition.slug == slug), None)
 
 

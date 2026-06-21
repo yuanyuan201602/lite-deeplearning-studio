@@ -1,4 +1,13 @@
-from app.task_catalog import get_competition, get_task, list_competitions
+from app.models import AiCapability
+from app.task_catalog import (
+    get_competition,
+    get_task,
+    list_competitions,
+    related_case_for_capability,
+    related_general_task_for_case,
+)
+
+EXISTING_CAPABILITIES = set(AiCapability.__args__)
 
 
 def test_catalog_exposes_two_competitions() -> None:
@@ -7,6 +16,101 @@ def test_catalog_exposes_two_competitions() -> None:
     slugs = {competition.slug for competition in competitions}
 
     assert slugs == {"smart_museum", "future_creator"}
+
+
+# Image/audio cases collect their own data (no bundled pack) → empty bundled_dataset_id.
+SELF_COLLECT_CASES = {"case_garbage_sort", "case_voice_command"}
+
+
+def test_application_cases_group_is_always_visible() -> None:
+    # Mirrors GENERAL_ML: not in the edition-filtered COMPETITIONS list, but
+    # resolvable in every edition via the get_competition special-case.
+    assert "application_cases" not in {c.slug for c in list_competitions()}
+    for edition in ("all", "smart_museum", "future_creator"):
+        group = get_competition("application_cases", edition)
+        assert group is not None
+        assert len(group.tasks) == 5
+
+
+def test_application_cases_reuse_existing_capabilities() -> None:
+    group = get_competition("application_cases")
+    slugs = {task.slug for task in group.tasks}
+    assert slugs == {
+        "case_spam_filter",
+        "case_campus_qa",
+        "case_step_counter",
+        "case_garbage_sort",
+        "case_voice_command",
+    }
+
+    for task in group.tasks:
+        # Zero new ML capabilities: every case rides an existing one.
+        assert task.ai_capability in EXISTING_CAPABILITIES
+        # Application framing fields populated.
+        assert task.case_scenario
+        assert task.case_domain
+        assert task.group == "应用案例"
+        # Bundled-pack batch carries a dataset id; self-collect batch leaves it empty.
+        if task.slug in SELF_COLLECT_CASES:
+            assert task.bundled_dataset_id == ""
+        else:
+            assert task.bundled_dataset_id
+        # Rendering / export fields must be present like GENERAL_TASKS.
+        assert task.concept_intro
+        assert len(task.step_guides) == 4
+        assert task.real_world_examples
+        assert task.next_steps
+        assert "README.md" in task.required_outputs
+
+
+def test_application_case_resolves_via_get_task() -> None:
+    task = get_task("application_cases", "case_spam_filter")
+    assert task is not None
+    assert task.ai_capability == "text_classifier"
+    assert task.bundled_dataset_id == "general_text_spam"
+    assert get_task("application_cases", "missing") is None
+
+
+def test_self_collect_cases_resolve_with_image_audio_capabilities() -> None:
+    garbage = get_task("application_cases", "case_garbage_sort")
+    assert garbage is not None
+    assert garbage.ai_capability == "image_classifier"
+    assert garbage.sample_dataset_kind == "image"
+    assert garbage.case_domain == "环保"
+    assert garbage.bundled_dataset_id == ""
+
+    voice = get_task("application_cases", "case_voice_command")
+    assert voice is not None
+    assert voice.ai_capability == "audio_classifier"
+    assert voice.sample_dataset_kind == "audio"
+    assert voice.case_domain == "智能家居"
+    assert voice.bundled_dataset_id == ""
+
+
+def test_cross_link_helpers_pair_cases_and_general_tasks() -> None:
+    # PRD §4.3 mapping: each of the 5 case capabilities resolves both ways.
+    expected = {
+        "case_spam_filter": "general_text_classifier",
+        "case_campus_qa": "general_qa_retrieval",
+        "case_step_counter": "general_sensor_decision",
+        "case_garbage_sort": "general_image_classifier",
+        "case_voice_command": "general_audio_classifier",
+    }
+    for case_slug, general_slug in expected.items():
+        case = get_task("application_cases", case_slug)
+        general = related_general_task_for_case(case_slug)
+        assert general is not None
+        assert general.slug == general_slug
+        # And the reverse direction round-trips back to the same case.
+        back = related_case_for_capability(case.ai_capability)
+        assert back is not None
+        assert back.slug == case_slug
+
+
+def test_detection_capability_has_no_related_case() -> None:
+    # Detection has a general task but no application case → no link.
+    assert related_case_for_capability("object_detector_trainable") is None
+    assert related_general_task_for_case("case_missing") is None
 
 
 def test_each_competition_has_student_tasks() -> None:
